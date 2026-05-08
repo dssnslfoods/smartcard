@@ -5,11 +5,13 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import HomeScreen from "./src/screens/HomeScreen";
 import ReviewScreen from "./src/screens/ReviewScreen";
-import type { CardData } from "./src/types";
+import EventFormScreen from "./src/screens/EventFormScreen";
+import type { CardData, EventConfig } from "./src/types";
 
 export type RootStackParamList = {
   Home: undefined;
   Review: { card: CardData; imageBase64: string };
+  EventForm: { card: CardData; imageBase64: string; event: EventConfig };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -28,6 +30,11 @@ export default function App() {
             name="Review"
             component={ReviewScreen}
             options={{ title: "ตรวจสอบนามบัตร" }}
+          />
+          <Stack.Screen
+            name="EventForm"
+            component={EventFormScreen}
+            options={{ title: "ข้อมูล Event" }}
           />
         </Stack.Navigator>
       </NavigationContainer>

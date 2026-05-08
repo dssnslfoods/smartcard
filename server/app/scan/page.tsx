@@ -27,6 +27,26 @@ type CardData = {
   address: string;
 };
 
+type EventField =
+  | { type: "text"; key: string; labelTh: string; labelEn: string; placeholder?: string }
+  | { type: "textarea"; key: string; labelTh: string; labelEn: string; rows?: number }
+  | {
+      type: "multiselect";
+      key: string;
+      labelTh: string;
+      labelEn: string;
+      options: string[];
+      allowOther?: boolean;
+    };
+
+type EventConfig = {
+  id: string;
+  name: string;
+  sheetTab: string;
+  active: boolean;
+  fields: EventField[];
+};
+
 const empty: CardData = {
   name: "",
   position: "",
@@ -47,7 +67,9 @@ const FIELDS: { key: keyof CardData; label: string; multiline?: boolean; type?: 
   { key: "address", label: "ที่อยู่", multiline: true },
 ];
 
-type Step = "home" | "scanning" | "review" | "saving" | "done";
+type Step = "home" | "scanning" | "review" | "event" | "saving" | "done";
+type MultiState = { selected: string[]; other: string };
+type EventStateValue = string | MultiState;
 
 export default function ScanPage() {
   const [step, setStep] = useState<Step>("home");
@@ -56,6 +78,9 @@ export default function ScanPage() {
   const [error, setError] = useState<string | null>(null);
   const [device, setDevice] = useState("");
   const [editingDevice, setEditingDevice] = useState(false);
+  const [events, setEvents] = useState<EventConfig[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string>("");
+  const [eventState, setEventState] = useState<Record<string, EventStateValue>>({});
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
@@ -66,6 +91,10 @@ export default function ScanPage() {
     } else {
       setEditingDevice(true);
     }
+    fetch("/api/events", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setEvents(d.events ?? []))
+      .catch(() => setEvents([]));
   }, []);
 
   const saveDevice = (name: string) => {
@@ -105,7 +134,19 @@ export default function ScanPage() {
     }
   };
 
-  const onSave = async () => {
+  const onContinueToEvent = () => {
+    const event = events.find((e) => e.id === selectedEventId);
+    if (!event) return;
+    const init: Record<string, EventStateValue> = {};
+    for (const f of event.fields) {
+      if (f.type === "multiselect") init[f.key] = { selected: [], other: "" };
+      else init[f.key] = "";
+    }
+    setEventState(init);
+    setStep("event");
+  };
+
+  const onSaveNoEvent = async () => {
     setStep("saving");
     setError(null);
     try {
@@ -123,12 +164,70 @@ export default function ScanPage() {
     }
   };
 
+  const onSaveEvent = async () => {
+    const event = events.find((e) => e.id === selectedEventId);
+    if (!event) return;
+    setStep("saving");
+    setError(null);
+    try {
+      const response: Record<string, unknown> = {};
+      for (const f of event.fields) {
+        const v = eventState[f.key];
+        if (f.type === "multiselect") {
+          const m = v as MultiState;
+          response[f.key] = { selected: m.selected, other: m.other };
+        } else {
+          response[f.key] = v as string;
+        }
+      }
+      const res = await fetch("/api/save-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          eventId: event.id,
+          card,
+          deviceLabel: device || "Web",
+          imageBase64,
+          response,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setStep("done");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setStep("event");
+    }
+  };
+
   const reset = () => {
     setCard(empty);
     setImageBase64("");
     setError(null);
+    setSelectedEventId("");
+    setEventState({});
     setStep("home");
   };
+
+  const setEventText = (key: string, v: string) => {
+    setEventState((p) => ({ ...p, [key]: v }));
+  };
+  const toggleEventOption = (key: string, opt: string) => {
+    setEventState((p) => {
+      const cur = p[key] as MultiState;
+      const has = cur.selected.includes(opt);
+      const selected = has ? cur.selected.filter((o) => o !== opt) : [...cur.selected, opt];
+      return { ...p, [key]: { ...cur, selected } };
+    });
+  };
+  const setEventOther = (key: string, v: string) => {
+    setEventState((p) => {
+      const cur = p[key] as MultiState;
+      return { ...p, [key]: { ...cur, other: v } };
+    });
+  };
+
+  const selectedEvent = events.find((e) => e.id === selectedEventId);
 
   return (
     <div className="min-h-[100dvh] bg-gradient-to-b from-slate-50 to-slate-100">
@@ -215,7 +314,7 @@ export default function ScanPage() {
           </Card>
         )}
 
-        {(step === "review" || step === "saving") && (
+        {step === "review" && (
           <Card>
             <CardContent className="p-5 space-y-4">
               <div>
@@ -240,7 +339,6 @@ export default function ScanPage() {
                         id={f.key}
                         value={card[f.key]}
                         onChange={(e) => setCard({ ...card, [f.key]: e.target.value })}
-                        disabled={step === "saving"}
                       />
                     ) : (
                       <Input
@@ -248,7 +346,6 @@ export default function ScanPage() {
                         type={f.type ?? "text"}
                         value={card[f.key]}
                         onChange={(e) => setCard({ ...card, [f.key]: e.target.value })}
-                        disabled={step === "saving"}
                         autoCapitalize={f.type === "email" ? "none" : "sentences"}
                       />
                     )}
@@ -256,23 +353,101 @@ export default function ScanPage() {
                 ))}
               </div>
 
+              {events.length > 0 && (
+                <div className="pt-2">
+                  <Label className="mb-1.5 block">ผูกกับ Event (ถ้ามี)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    <Chip
+                      label="ไม่เลือก"
+                      active={!selectedEventId}
+                      onClick={() => setSelectedEventId("")}
+                    />
+                    {events.map((e) => (
+                      <Chip
+                        key={e.id}
+                        label={e.name}
+                        active={selectedEventId === e.id}
+                        onClick={() => setSelectedEventId(e.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" className="flex-1" onClick={reset}>
+                  ยกเลิก
+                </Button>
+                {selectedEventId ? (
+                  <Button className="flex-1" onClick={onContinueToEvent}>
+                    ถัดไป: กรอกข้อมูล Event
+                  </Button>
+                ) : (
+                  <Button className="flex-1" onClick={onSaveNoEvent}>
+                    บันทึกลง Sheet
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {(step === "event" || step === "saving") && selectedEvent && (
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              <div>
+                <h2 className="font-semibold">{selectedEvent.name}</h2>
+                <p className="text-xs text-muted-foreground">
+                  กรอกข้อมูลเพิ่มเติมสำหรับ event นี้
+                </p>
+              </div>
+
+              <div className="rounded-md bg-indigo-50 px-3 py-2 text-sm">
+                <div className="font-semibold text-indigo-900">{card.name}</div>
+                {card.company && (
+                  <div className="text-xs text-muted-foreground">{card.company}</div>
+                )}
+              </div>
+
+              {error && (
+                <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
+
+              {selectedEvent.fields.map((f) => (
+                <EventFieldRow
+                  key={f.key}
+                  field={f}
+                  value={eventState[f.key]}
+                  disabled={step === "saving"}
+                  onText={(v) => setEventText(f.key, v)}
+                  onToggle={(opt) => toggleEventOption(f.key, opt)}
+                  onOther={(v) => setEventOther(f.key, v)}
+                />
+              ))}
+
               <div className="flex gap-2 pt-2">
                 <Button
                   variant="outline"
                   className="flex-1"
-                  onClick={reset}
+                  onClick={() => setStep("review")}
                   disabled={step === "saving"}
                 >
-                  ยกเลิก
+                  กลับ
                 </Button>
-                <Button className="flex-1" onClick={onSave} disabled={step === "saving"}>
+                <Button
+                  className="flex-1"
+                  onClick={onSaveEvent}
+                  disabled={step === "saving"}
+                >
                   {step === "saving" ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       กำลังบันทึก...
                     </>
                   ) : (
-                    "บันทึกลง Sheet"
+                    "บันทึก"
                   )}
                 </Button>
               </div>
@@ -289,7 +464,9 @@ export default function ScanPage() {
               <div>
                 <h2 className="text-lg font-semibold">บันทึกเรียบร้อย!</h2>
                 <p className="text-sm text-muted-foreground">
-                  เพิ่มข้อมูลลง Google Sheet แล้ว
+                  {selectedEvent
+                    ? `เพิ่มข้อมูลลง ${selectedEvent.sheetTab} แล้ว`
+                    : "เพิ่มข้อมูลลง Google Sheet แล้ว"}
                 </p>
               </div>
               <div className="flex gap-2 w-full">
@@ -304,6 +481,105 @@ export default function ScanPage() {
           </Card>
         )}
       </main>
+    </div>
+  );
+}
+
+function Chip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${
+        active
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-background border-input hover:bg-muted"
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function EventFieldRow({
+  field,
+  value,
+  disabled,
+  onText,
+  onToggle,
+  onOther,
+}: {
+  field: EventField;
+  value: EventStateValue | undefined;
+  disabled: boolean;
+  onText: (v: string) => void;
+  onToggle: (opt: string) => void;
+  onOther: (v: string) => void;
+}) {
+  if (field.type === "text") {
+    return (
+      <div>
+        <Label className="mb-1.5 block">
+          {field.labelTh}
+          {field.labelEn ? ` / ${field.labelEn}` : ""}
+        </Label>
+        <Input
+          value={(value as string) ?? ""}
+          onChange={(e) => onText(e.target.value)}
+          disabled={disabled}
+          placeholder={field.placeholder ?? field.labelEn}
+        />
+      </div>
+    );
+  }
+  if (field.type === "textarea") {
+    return (
+      <div>
+        <Label className="mb-1.5 block">
+          {field.labelTh} / {field.labelEn}
+        </Label>
+        <Textarea
+          value={(value as string) ?? ""}
+          onChange={(e) => onText(e.target.value)}
+          disabled={disabled}
+          rows={field.rows ?? 3}
+        />
+      </div>
+    );
+  }
+  const m = (value as MultiState) ?? { selected: [], other: "" };
+  return (
+    <div>
+      <Label className="mb-1.5 block">
+        {field.labelTh} / {field.labelEn}
+      </Label>
+      <div className="flex flex-wrap gap-2">
+        {field.options.map((opt) => (
+          <Chip
+            key={opt}
+            label={opt}
+            active={m.selected.includes(opt)}
+            onClick={() => !disabled && onToggle(opt)}
+          />
+        ))}
+      </div>
+      {field.allowOther && (
+        <Input
+          className="mt-2"
+          value={m.other}
+          onChange={(e) => onOther(e.target.value)}
+          placeholder="อื่นๆ ระบุ..."
+          disabled={disabled}
+        />
+      )}
     </div>
   );
 }

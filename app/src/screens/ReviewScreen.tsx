@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -14,13 +14,18 @@ import {
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import type { RootStackParamList } from "../../App";
-import { saveBusinessCard } from "../lib/api";
+import { saveBusinessCard, getEvents } from "../lib/api";
 import { getDeviceLabel } from "../lib/device";
-import type { CardData } from "../types";
+import type { CardData, EventConfig } from "../types";
 
 type Props = NativeStackScreenProps<RootStackParamList, "Review">;
 
-const fields: { key: keyof CardData; label: string; multiline?: boolean; keyboardType?: "default" | "email-address" | "phone-pad" | "url" }[] = [
+const fields: {
+  key: keyof CardData;
+  label: string;
+  multiline?: boolean;
+  keyboardType?: "default" | "email-address" | "phone-pad" | "url";
+}[] = [
   { key: "name", label: "ชื่อ" },
   { key: "position", label: "ตำแหน่ง" },
   { key: "company", label: "บริษัท" },
@@ -33,14 +38,22 @@ const fields: { key: keyof CardData; label: string; multiline?: boolean; keyboar
 export default function ReviewScreen({ navigation, route }: Props) {
   const [card, setCard] = useState<CardData>(route.params.card);
   const [saving, setSaving] = useState(false);
+  const [events, setEvents] = useState<EventConfig[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState<string>("");
   const deviceLabel = getDeviceLabel();
   const imageBase64 = route.params.imageBase64;
+
+  useEffect(() => {
+    getEvents()
+      .then(setEvents)
+      .catch(() => setEvents([]));
+  }, []);
 
   const update = (key: keyof CardData, value: string) => {
     setCard((prev) => ({ ...prev, [key]: value }));
   };
 
-  const onSave = async () => {
+  const onSaveNoEvent = async () => {
     try {
       setSaving(true);
       await saveBusinessCard(card, deviceLabel, imageBase64);
@@ -52,6 +65,12 @@ export default function ReviewScreen({ navigation, route }: Props) {
     } finally {
       setSaving(false);
     }
+  };
+
+  const onContinueToEvent = () => {
+    const event = events.find((e) => e.id === selectedEventId);
+    if (!event) return;
+    navigation.navigate("EventForm", { card, imageBase64, event });
   };
 
   return (
@@ -85,17 +104,59 @@ export default function ReviewScreen({ navigation, route }: Props) {
           <Text style={styles.deviceValue}>{deviceLabel}</Text>
         </View>
 
-        <Pressable
-          style={({ pressed }) => [styles.saveButton, pressed && styles.pressed]}
-          onPress={onSave}
-          disabled={saving}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.saveText}>💾 บันทึกลง Google Sheet</Text>
-          )}
-        </Pressable>
+        {events.length > 0 && (
+          <View style={styles.eventBlock}>
+            <Text style={styles.label}>ผูกกับ Event (ถ้ามี)</Text>
+            <View style={styles.chipRow}>
+              <Pressable
+                onPress={() => setSelectedEventId("")}
+                style={[styles.chip, !selectedEventId && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, !selectedEventId && styles.chipTextActive]}>
+                  ไม่เลือก
+                </Text>
+              </Pressable>
+              {events.map((e) => (
+                <Pressable
+                  key={e.id}
+                  onPress={() => setSelectedEventId(e.id)}
+                  style={[styles.chip, selectedEventId === e.id && styles.chipActive]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      selectedEventId === e.id && styles.chipTextActive,
+                    ]}
+                  >
+                    {e.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {selectedEventId ? (
+          <Pressable
+            style={({ pressed }) => [styles.saveButton, pressed && styles.pressed]}
+            onPress={onContinueToEvent}
+            disabled={saving}
+          >
+            <Text style={styles.saveText}>➡️ ถัดไป: กรอกข้อมูล Event</Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            style={({ pressed }) => [styles.saveButton, pressed && styles.pressed]}
+            onPress={onSaveNoEvent}
+            disabled={saving}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.saveText}>💾 บันทึกลง Google Sheet</Text>
+            )}
+          </Pressable>
+        )}
 
         <Pressable
           style={({ pressed }) => [styles.cancelButton, pressed && styles.pressed]}
@@ -136,10 +197,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginTop: 10,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   deviceLabel: { fontSize: 13, color: "#475569", fontWeight: "600" },
   deviceValue: { fontSize: 14, color: "#0f172a", fontWeight: "700" },
+  eventBlock: { marginBottom: 18 },
+  chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    backgroundColor: "#fff",
+  },
+  chipActive: { backgroundColor: "#3b82f6", borderColor: "#3b82f6" },
+  chipText: { color: "#475569", fontSize: 13, fontWeight: "600" },
+  chipTextActive: { color: "#fff" },
   saveButton: {
     backgroundColor: "#16a34a",
     paddingVertical: 16,

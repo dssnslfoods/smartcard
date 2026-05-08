@@ -9,6 +9,8 @@ import {
   AlertCircle,
   Camera,
   Settings,
+  FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import { StatsCards } from "@/components/dashboard/StatsCards";
 import { ActivityChart } from "@/components/dashboard/ActivityChart";
@@ -130,6 +132,13 @@ export default function DashboardPage() {
     load(tab);
   }, [tab, load]);
 
+  const exportXlsx = () => {
+    const url = `/api/export?tab=${encodeURIComponent(tab)}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.click();
+  };
+
   const exportCsv = () => {
     if (tab === DEFAULT_TAB) {
       const headers = [
@@ -236,6 +245,19 @@ export default function DashboardPage() {
               <span className="hidden sm:inline">รีเฟรช</span>
             </Button>
             <Button
+              size="sm"
+              onClick={exportXlsx}
+              disabled={
+                (tab === DEFAULT_TAB && contacts.length === 0) ||
+                (tab !== DEFAULT_TAB && eventContacts.length === 0)
+              }
+              variant="outline"
+              className="bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              <span className="hidden sm:inline">Excel</span>
+            </Button>
+            <Button
               variant="outline"
               size="sm"
               onClick={exportCsv}
@@ -244,7 +266,7 @@ export default function DashboardPage() {
                 (tab !== DEFAULT_TAB && eventContacts.length === 0)
               }
             >
-              <Download className="h-4 w-4" />
+              <FileText className="h-4 w-4" />
               <span className="hidden sm:inline">CSV</span>
             </Button>
           </div>

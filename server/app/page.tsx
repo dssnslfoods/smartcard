@@ -89,7 +89,7 @@ export default function DashboardPage() {
       setError(null);
       try {
         if (currentTab === DEFAULT_TAB) {
-          const res = await fetch("/api/list", { cache: "no-store" });
+          const res = await fetch("/api/list-all", { cache: "no-store" });
           if (!res.ok) {
             const j = await res.json().catch(() => ({}));
             throw new Error(j.error || `HTTP ${res.status}`);
@@ -276,7 +276,7 @@ export default function DashboardPage() {
       <main className="container mx-auto max-w-7xl px-4 py-6 space-y-6">
         <div className="flex items-center gap-2 flex-wrap">
           <TabPill
-            label="ทั้งหมด (ไม่ผูก event)"
+            label="ทั้งหมด"
             active={tab === DEFAULT_TAB}
             onClick={() => setTab(DEFAULT_TAB)}
           />

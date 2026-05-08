@@ -10,6 +10,9 @@ export type Contact = {
   address: string;
   device: string;
   imageUrl: string;
+  eventId?: string | null;
+  eventName?: string | null;
+  eventTab?: string | null;
 };
 
 export const emptyContact: Omit<Contact, "rowIndex"> = {

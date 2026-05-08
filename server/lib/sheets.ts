@@ -124,6 +124,48 @@ export async function appendCardToSheet(
   });
 }
 
+export async function listContactsFromTab(tab: string): Promise<Contact[]> {
+  const { spreadsheetId } = getSheetConfig();
+  const sheets = getSheetsClient();
+
+  // Try reading first 10 columns; tab may not exist
+  let res;
+  try {
+    res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${tab}!A2:J`,
+    });
+  } catch {
+    return [];
+  }
+
+  const rows = res.data.values ?? [];
+  return rows
+    .map((row, i): Contact => ({
+      rowIndex: i + 2,
+      date: String(row[0] ?? ""),
+      name: String(row[1] ?? ""),
+      position: String(row[2] ?? ""),
+      company: String(row[3] ?? ""),
+      phone: String(row[4] ?? ""),
+      email: String(row[5] ?? ""),
+      website: String(row[6] ?? ""),
+      address: String(row[7] ?? ""),
+      device: String(row[8] ?? ""),
+      imageUrl: String(row[9] ?? ""),
+    }))
+    .filter((c) => c.name || c.company || c.phone || c.email);
+}
+
+export async function listAllSheetTabs(): Promise<string[]> {
+  const { spreadsheetId } = getSheetConfig();
+  const sheets = getSheetsClient();
+  const meta = await sheets.spreadsheets.get({ spreadsheetId });
+  return (meta.data.sheets ?? [])
+    .map((s) => s.properties?.title ?? "")
+    .filter((t) => t.length > 0);
+}
+
 export async function listContacts(): Promise<Contact[]> {
   const { spreadsheetId, tab } = getSheetConfig();
   const sheets = getSheetsClient();

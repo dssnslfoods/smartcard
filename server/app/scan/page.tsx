@@ -303,7 +303,14 @@ export default function ScanPage() {
                 type="file"
                 accept="image/*"
                 capture="environment"
-                className="hidden"
+                className="sr-only"
+                style={{
+                  position: "absolute",
+                  width: 1,
+                  height: 1,
+                  opacity: 0,
+                  pointerEvents: "none",
+                }}
                 onChange={(e) => {
                   handleFile(e.target.files?.[0] ?? null);
                   if (cameraRef.current) cameraRef.current.value = "";
@@ -313,7 +320,14 @@ export default function ScanPage() {
                 ref={galleryRef}
                 type="file"
                 accept="image/*"
-                className="hidden"
+                className="sr-only"
+                style={{
+                  position: "absolute",
+                  width: 1,
+                  height: 1,
+                  opacity: 0,
+                  pointerEvents: "none",
+                }}
                 onChange={(e) => {
                   handleFile(e.target.files?.[0] ?? null);
                   if (galleryRef.current) galleryRef.current.value = "";

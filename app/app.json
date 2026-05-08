@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "SmartCard",
+    "slug": "smartcard",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.smartcard.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "อนุญาตให้ SmartCard เข้าถึงกล้องเพื่อถ่ายรูปนามบัตร",
+        "NSPhotoLibraryUsageDescription": "อนุญาตให้ SmartCard เข้าถึงรูปภาพเพื่อเลือกรูปนามบัตร"
+      }
+    },
+    "android": {
+      "package": "com.smartcard.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "permissions": []
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "อนุญาตให้ SmartCard เข้าถึงรูปภาพเพื่อเลือกรูปนามบัตร",
+          "cameraPermission": "อนุญาตให้ SmartCard เข้าถึงกล้องเพื่อถ่ายรูปนามบัตร"
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "https://smartcard-five.vercel.app",
+      "eas": {
+        "projectId": "13aa2c8f-f25a-4137-8b54-d6bddb02be78"
+      }
+    },
+    "owner": "dssnslfoods",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/13aa2c8f-f25a-4137-8b54-d6bddb02be78"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+runConfig:
+  minInstances: 0
+  maxInstances: 5
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  - variable: GOOGLE_SHEET_TAB
+    value: Sheet1
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
+    availability:
+      - RUNTIME
+
+  - variable: GOOGLE_SHEET_ID
+    secret: GOOGLE_SHEET_ID
+    availability:
+      - RUNTIME
+
+  - variable: GOOGLE_SERVICE_ACCOUNT_EMAIL
+    secret: GOOGLE_SERVICE_ACCOUNT_EMAIL
+    availability:
+      - RUNTIME
+
+  - variable: GOOGLE_PRIVATE_KEY
+    secret: GOOGLE_PRIVATE_KEY
+    availability:
+      - RUNTIME

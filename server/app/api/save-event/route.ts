@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { saveEventResponse, type EventResponse } from "@/lib/events";
-import { uploadCardImages } from "@/lib/drive";
+import { uploadCardImages } from "@/lib/storage";
 import type { CardData } from "@/lib/gemini";
 
 export const maxDuration = 60;
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
           `[save-event] uploading ${images.length} image(s) for ${card.name}`
         );
         const results = await uploadCardImages(images, card.name || "card");
-        imageUrls = results.map((r) => r.webViewLink);
+        imageUrls = results.map((r) => r.url);
         console.log(`[save-event] uploaded ${imageUrls.length} image(s)`);
       } catch (driveErr) {
         imageError =

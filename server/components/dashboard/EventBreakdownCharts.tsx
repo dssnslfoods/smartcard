@@ -145,11 +145,16 @@ export function EventBreakdownCharts({
                         borderRadius: 8,
                         fontSize: 12,
                       }}
-                      formatter={(v: number, _name, item) => [
-                        `${v} รายการ (${item.payload.percent}%)`,
-                        "",
-                      ]}
-                      labelFormatter={(label) => label}
+                      formatter={(value, _name, item) => {
+                        const percent =
+                          (item as unknown as { payload: { percent: number } })
+                            .payload.percent;
+                        return [`${value} รายการ (${percent}%)`, ""] as [
+                          string,
+                          string,
+                        ];
+                      }}
+                      labelFormatter={(label) => String(label)}
                     />
                     <Bar dataKey="count" radius={[0, 4, 4, 0]}>
                       {data.map((_, i) => (

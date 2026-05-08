@@ -16,3 +16,6 @@ smartcard-*.json
 .firebase/
 firebase-debug.log
 firebase-debug.*.log
+
+# Claude
+.claude/

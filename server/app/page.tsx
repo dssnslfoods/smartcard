@@ -293,7 +293,11 @@ export default function DashboardPage() {
             />
           </>
         ) : activeEvent ? (
-          <EventContactsTable event={activeEvent} contacts={eventContacts} />
+          <>
+            <StatsCards contacts={eventContactsAsContacts(eventContacts)} />
+            <ActivityChart contacts={eventContactsAsContacts(eventContacts)} />
+            <EventContactsTable event={activeEvent} contacts={eventContacts} />
+          </>
         ) : null}
       </main>
 
@@ -339,6 +343,22 @@ function TabPill({
       {label}
     </button>
   );
+}
+
+function eventContactsAsContacts(list: EventContact[]): Contact[] {
+  return list.map((c) => ({
+    rowIndex: c.rowIndex,
+    date: c.date,
+    name: c.name,
+    position: c.position,
+    company: c.company,
+    phone: c.phone,
+    email: c.email,
+    website: c.website,
+    address: c.address,
+    device: c.device,
+    imageUrl: c.imageUrl,
+  }));
 }
 
 function csvCell(v: string): string {

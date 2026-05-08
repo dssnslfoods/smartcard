@@ -14,6 +14,8 @@ import { StatsCards } from "@/components/dashboard/StatsCards";
 import { ActivityChart } from "@/components/dashboard/ActivityChart";
 import { ContactsTable } from "@/components/dashboard/ContactsTable";
 import { EventContactsTable } from "@/components/dashboard/EventContactsTable";
+import { EventBreakdownCharts } from "@/components/dashboard/EventBreakdownCharts";
+import { EventSummary } from "@/components/dashboard/EventSummary";
 import { EditDialog } from "@/components/dashboard/EditDialog";
 import { DeleteDialog } from "@/components/dashboard/DeleteDialog";
 import type { Contact } from "@/lib/contact";
@@ -286,6 +288,9 @@ export default function DashboardPage() {
           <>
             <StatsCards contacts={contacts} />
             <ActivityChart contacts={contacts} />
+            {events.length > 0 && (
+              <EventSummary events={events} onSelect={setTab} />
+            )}
             <ContactsTable
               contacts={contacts}
               onEdit={setEditing}
@@ -296,6 +301,7 @@ export default function DashboardPage() {
           <>
             <StatsCards contacts={eventContactsAsContacts(eventContacts)} />
             <ActivityChart contacts={eventContactsAsContacts(eventContacts)} />
+            <EventBreakdownCharts event={activeEvent} contacts={eventContacts} />
             <EventContactsTable event={activeEvent} contacts={eventContacts} />
           </>
         ) : null}

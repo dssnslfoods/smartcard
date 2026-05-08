@@ -30,13 +30,22 @@ export async function POST(req: NextRequest) {
     }
 
     let imageUrl = "";
+    let imageError: string | undefined;
     if (imageBase64 && typeof imageBase64 === "string") {
       try {
+        console.log(
+          `[save-event] uploading image for ${card.name}, base64 length=${imageBase64.length}`
+        );
         const upload = await uploadCardImage(imageBase64, card.name || "card");
         imageUrl = upload.webViewLink;
+        console.log(`[save-event] image uploaded: ${imageUrl}`);
       } catch (driveErr) {
-        console.error("drive upload failed (continuing):", driveErr);
+        imageError =
+          driveErr instanceof Error ? driveErr.message : String(driveErr);
+        console.error("[save-event] drive upload failed:", driveErr);
       }
+    } else {
+      console.warn("[save-event] no imageBase64 provided");
     }
 
     await saveEventResponse(
@@ -47,7 +56,7 @@ export async function POST(req: NextRequest) {
       response ?? {}
     );
 
-    return NextResponse.json({ ok: true, imageUrl });
+    return NextResponse.json({ ok: true, imageUrl, imageError });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("save-event error:", err);

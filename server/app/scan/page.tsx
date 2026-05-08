@@ -157,6 +157,10 @@ export default function ScanPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      if (data.imageError) {
+        console.warn("Image upload failed:", data.imageError);
+        setError(`บันทึกข้อมูลแล้ว แต่อัปโหลดรูปไม่สำเร็จ: ${data.imageError}`);
+      }
       setStep("done");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -193,6 +197,10 @@ export default function ScanPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      if (data.imageError) {
+        console.warn("Image upload failed:", data.imageError);
+        setError(`บันทึกข้อมูลแล้ว แต่อัปโหลดรูปไม่สำเร็จ: ${data.imageError}`);
+      }
       setStep("done");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

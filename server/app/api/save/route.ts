@@ -20,17 +20,26 @@ export async function POST(req: NextRequest) {
     }
 
     let imageUrl = "";
+    let imageError: string | undefined;
     if (imageBase64 && typeof imageBase64 === "string") {
       try {
+        console.log(
+          `[save] uploading image for ${card.name}, base64 length=${imageBase64.length}`
+        );
         const upload = await uploadCardImage(imageBase64, card.name || "card");
         imageUrl = upload.webViewLink;
+        console.log(`[save] image uploaded: ${imageUrl}`);
       } catch (driveErr) {
-        console.error("drive upload failed (continuing without image):", driveErr);
+        imageError =
+          driveErr instanceof Error ? driveErr.message : String(driveErr);
+        console.error("[save] drive upload failed:", driveErr);
       }
+    } else {
+      console.warn("[save] no imageBase64 provided");
     }
 
     await appendCardToSheet(card, deviceLabel, imageUrl);
-    return NextResponse.json({ ok: true, imageUrl });
+    return NextResponse.json({ ok: true, imageUrl, imageError });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
     console.error("save error:", err);

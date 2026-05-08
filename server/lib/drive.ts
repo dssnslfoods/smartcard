@@ -1,5 +1,5 @@
 import { google, drive_v3 } from "googleapis";
-import { Readable } from "stream";
+import { PassThrough } from "stream";
 
 function getDriveClient() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
@@ -101,17 +101,38 @@ export async function uploadCardImage(
   )}`;
   const filename = `${timeStr}_${sanitizeName(contactName)}.jpg`;
 
-  const buffer = Buffer.from(imageBase64, "base64");
-  const stream = Readable.from(buffer);
+  // Strip data URL prefix if present
+  const cleanBase64 = imageBase64.includes(",")
+    ? imageBase64.split(",")[1]
+    : imageBase64;
+  const buffer = Buffer.from(cleanBase64, "base64");
+  if (buffer.length < 100) {
+    throw new Error(
+      `Image buffer suspiciously small (${buffer.length} bytes). base64 length=${cleanBase64.length}`
+    );
+  }
+
+  const stream = new PassThrough();
+  stream.end(buffer);
+
+  console.log(
+    `[drive] uploading ${filename} (${buffer.length} bytes) to ${event_dateFolder(dateFolderId)}`
+  );
 
   const created = await drive.files.create({
     requestBody: { name: filename, parents: [dateFolderId] },
     media: { mimeType: "image/jpeg", body: stream },
-    fields: "id, webViewLink",
+    fields: "id, webViewLink, webContentLink, parents",
     supportsAllDrives: true,
   });
 
   if (!created.data.id) throw new Error("Drive upload returned no file id");
+
+  console.log(
+    `[drive] uploaded: id=${created.data.id} parents=${JSON.stringify(
+      created.data.parents
+    )} link=${created.data.webViewLink}`
+  );
 
   return {
     id: created.data.id,
@@ -119,4 +140,8 @@ export async function uploadCardImage(
       created.data.webViewLink ||
       `https://drive.google.com/file/d/${created.data.id}/view`,
   };
+}
+
+function event_dateFolder(id: string): string {
+  return `folder=${id}`;
 }

@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Pencil, Trash2, Search, Mail, Phone, Globe, ChevronLeft, ChevronRight } from "lucide-react";
+import { Pencil, Trash2, Search, Mail, Phone, Globe, ChevronLeft, ChevronRight, Image as ImageIcon } from "lucide-react";
 import type { Contact } from "@/lib/contact";
 
 type Props = {
@@ -132,6 +132,19 @@ export function ContactsTable({ contacts, onEdit, onDelete }: Props) {
                       {c.device || "—"}
                     </Td>
                     <Td className="text-right whitespace-nowrap">
+                      {c.imageUrl && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          asChild
+                          title="ดูรูปนามบัตร"
+                        >
+                          <a href={c.imageUrl} target="_blank" rel="noopener noreferrer">
+                            <ImageIcon className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="icon"

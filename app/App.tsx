@@ -9,7 +9,7 @@ import type { CardData } from "./src/types";
 
 export type RootStackParamList = {
   Home: undefined;
-  Review: { card: CardData };
+  Review: { card: CardData; imageBase64: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

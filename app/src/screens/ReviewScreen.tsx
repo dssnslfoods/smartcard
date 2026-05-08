@@ -34,6 +34,7 @@ export default function ReviewScreen({ navigation, route }: Props) {
   const [card, setCard] = useState<CardData>(route.params.card);
   const [saving, setSaving] = useState(false);
   const deviceLabel = getDeviceLabel();
+  const imageBase64 = route.params.imageBase64;
 
   const update = (key: keyof CardData, value: string) => {
     setCard((prev) => ({ ...prev, [key]: value }));
@@ -42,7 +43,7 @@ export default function ReviewScreen({ navigation, route }: Props) {
   const onSave = async () => {
     try {
       setSaving(true);
-      await saveBusinessCard(card, deviceLabel);
+      await saveBusinessCard(card, deviceLabel, imageBase64);
       Alert.alert("บันทึกเรียบร้อย", "ข้อมูลถูกเพิ่มลง Google Sheet แล้ว", [
         { text: "ตกลง", onPress: () => navigation.popToTop() },
       ]);

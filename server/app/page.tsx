@@ -53,6 +53,7 @@ export default function DashboardPage() {
       "เว็บไซต์",
       "ที่อยู่",
       "บันทึกโดย",
+      "รูปนามบัตร",
     ];
     const rows = contacts.map((c) => [
       c.date,
@@ -64,6 +65,7 @@ export default function DashboardPage() {
       c.website,
       c.address,
       c.device,
+      c.imageUrl,
     ]);
     const csv = [headers, ...rows]
       .map((row) => row.map(csvCell).join(","))

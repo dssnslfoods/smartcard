@@ -17,13 +17,14 @@ export async function scanBusinessCard(imageBase64: string): Promise<CardData> {
 
 export async function saveBusinessCard(
   card: CardData,
-  deviceLabel: string
-): Promise<{ ok: true }> {
+  deviceLabel: string,
+  imageBase64: string
+): Promise<{ ok: true; imageUrl?: string }> {
   ASSERT_API_BASE_URL();
   const res = await fetch(`${API_BASE_URL}/api/save`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ card, deviceLabel }),
+    body: JSON.stringify({ card, deviceLabel, imageBase64 }),
   });
   const text = await res.text();
   if (!res.ok) {

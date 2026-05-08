@@ -9,6 +9,7 @@ export type Contact = {
   website: string;
   address: string;
   device: string;
+  imageUrl: string;
 };
 
 export const emptyContact: Omit<Contact, "rowIndex"> = {
@@ -21,4 +22,5 @@ export const emptyContact: Omit<Contact, "rowIndex"> = {
   website: "",
   address: "",
   device: "",
+  imageUrl: "",
 };

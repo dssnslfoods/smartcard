@@ -26,7 +26,7 @@ export default function HomeScreen({ navigation }: Props) {
       setBusy(true);
       const base64 = await prepareForUpload(uri);
       const card = await scanBusinessCard(base64);
-      navigation.navigate("Review", { card });
+      navigation.navigate("Review", { card, imageBase64: base64 });
     } catch (e) {
       Alert.alert("เกิดข้อผิดพลาด", e instanceof Error ? e.message : String(e));
     } finally {

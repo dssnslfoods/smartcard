@@ -11,12 +11,17 @@ const HEADER_ROW = [
   "เว็บไซต์",
   "ที่อยู่",
   "บันทึกโดย (เครื่อง)",
+  "รูปนามบัตร",
 ];
+
+const SHEET_RANGE = "A:J";
+const HEADER_RANGE = "A1:J1";
 
 export type Contact = CardData & {
   rowIndex: number;
   date: string;
   device: string;
+  imageUrl: string;
 };
 
 function getSheetsClient() {
@@ -62,10 +67,10 @@ async function ensureHeaderRow(
   spreadsheetId: string,
   tab: string
 ) {
-  const range = `${tab}!A1:I1`;
+  const range = `${tab}!${HEADER_RANGE}`;
   const current = await sheets.spreadsheets.values.get({ spreadsheetId, range });
-  const values = current.data.values?.[0];
-  if (!values || values.length === 0) {
+  const values = current.data.values?.[0] ?? [];
+  if (values.length < HEADER_ROW.length) {
     await sheets.spreadsheets.values.update({
       spreadsheetId,
       range,
@@ -90,7 +95,8 @@ async function getNumericSheetId(
 
 export async function appendCardToSheet(
   card: CardData,
-  deviceLabel: string
+  deviceLabel: string,
+  imageUrl: string = ""
 ): Promise<void> {
   const { spreadsheetId, tab } = getSheetConfig();
   const sheets = getSheetsClient();
@@ -106,11 +112,12 @@ export async function appendCardToSheet(
     card.website,
     card.address,
     deviceLabel,
+    imageUrl,
   ];
 
   await sheets.spreadsheets.values.append({
     spreadsheetId,
-    range: `${tab}!A:I`,
+    range: `${tab}!${SHEET_RANGE}`,
     valueInputOption: "USER_ENTERED",
     insertDataOption: "INSERT_ROWS",
     requestBody: { values: [row] },
@@ -124,7 +131,7 @@ export async function listContacts(): Promise<Contact[]> {
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${tab}!A2:I`,
+    range: `${tab}!A2:J`,
   });
 
   const rows = res.data.values ?? [];
@@ -140,6 +147,7 @@ export async function listContacts(): Promise<Contact[]> {
       website: String(row[6] ?? ""),
       address: String(row[7] ?? ""),
       device: String(row[8] ?? ""),
+      imageUrl: String(row[9] ?? ""),
     }))
     .filter((c) => c.name || c.company || c.phone || c.email);
 }
@@ -154,13 +162,15 @@ export async function updateContact(
 
   const existing = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: `${tab}!A${rowIndex}:I${rowIndex}`,
+    range: `${tab}!A${rowIndex}:J${rowIndex}`,
   });
-  const currentDate = String(existing.data.values?.[0]?.[0] ?? formatThaiDate(new Date()));
+  const existingRow = existing.data.values?.[0] ?? [];
+  const currentDate = String(existingRow[0] ?? formatThaiDate(new Date()));
+  const currentImageUrl = String(existingRow[9] ?? "");
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `${tab}!A${rowIndex}:I${rowIndex}`,
+    range: `${tab}!A${rowIndex}:J${rowIndex}`,
     valueInputOption: "USER_ENTERED",
     requestBody: {
       values: [
@@ -174,6 +184,7 @@ export async function updateContact(
           card.website,
           card.address,
           device,
+          currentImageUrl,
         ],
       ],
     },

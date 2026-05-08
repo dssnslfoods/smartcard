@@ -52,6 +52,7 @@ type Step = "home" | "scanning" | "review" | "saving" | "done";
 export default function ScanPage() {
   const [step, setStep] = useState<Step>("home");
   const [card, setCard] = useState<CardData>(empty);
+  const [imageBase64, setImageBase64] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [device, setDevice] = useState("");
   const [editingDevice, setEditingDevice] = useState(false);
@@ -80,6 +81,7 @@ export default function ScanPage() {
     setStep("scanning");
     try {
       const base64 = await fileToResizedBase64(file);
+      setImageBase64(base64);
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -110,7 +112,7 @@ export default function ScanPage() {
       const res = await fetch("/api/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ card, deviceLabel: device || "Web" }),
+        body: JSON.stringify({ card, deviceLabel: device || "Web", imageBase64 }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -123,6 +125,7 @@ export default function ScanPage() {
 
   const reset = () => {
     setCard(empty);
+    setImageBase64("");
     setError(null);
     setStep("home");
   };

@@ -255,30 +255,34 @@ export function ContactsTable({ contacts, onEdit, onDelete }: Props) {
                         {c.device || "—"}
                       </Td>
                       <Td className="text-right whitespace-nowrap">
-                        {c.imageUrl &&
-                          c.imageUrl
+                        {(() => {
+                          const urls = (c.imageUrl ?? "")
                             .split(",")
                             .map((u) => u.trim())
-                            .filter(Boolean)
-                            .slice(0, 1)
-                            .map((u, i) => (
-                              <Button
-                                key={i}
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                asChild
-                                title="ดูรูปนามบัตร"
+                            .filter(Boolean);
+                          return urls.map((u, i) => (
+                            <Button
+                              key={i}
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              asChild
+                              title={
+                                urls.length > 1
+                                  ? `รูปที่ ${i + 1}/${urls.length}`
+                                  : "ดูรูปนามบัตร"
+                              }
+                            >
+                              <a
+                                href={u}
+                                target="_blank"
+                                rel="noopener noreferrer"
                               >
-                                <a
-                                  href={u}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  <ImageIcon className="h-4 w-4" />
-                                </a>
-                              </Button>
-                            ))}
+                                <ImageIcon className="h-4 w-4" />
+                              </a>
+                            </Button>
+                          ));
+                        })()}
                         {!c.eventId && (
                           <>
                             <Button

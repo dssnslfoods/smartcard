@@ -172,15 +172,40 @@ export function EventContactsTable({
                       {c.device || "—"}
                     </Td>
                     <Td className="text-right">
-                      {c.imageUrl ? (
-                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                          <a href={c.imageUrl} target="_blank" rel="noopener noreferrer">
-                            <ImageIcon className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                      {(() => {
+                        const urls = (c.imageUrl ?? "")
+                          .split(",")
+                          .map((u) => u.trim())
+                          .filter(Boolean);
+                        if (urls.length === 0)
+                          return <span className="text-muted-foreground">—</span>;
+                        return (
+                          <div className="inline-flex gap-1">
+                            {urls.map((u, i) => (
+                              <Button
+                                key={i}
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                asChild
+                                title={
+                                  urls.length > 1
+                                    ? `รูปที่ ${i + 1}/${urls.length}`
+                                    : "ดูรูปนามบัตร"
+                                }
+                              >
+                                <a
+                                  href={u}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <ImageIcon className="h-4 w-4" />
+                                </a>
+                              </Button>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </Td>
                   </tr>
                 ))

@@ -8,6 +8,7 @@ import {
   ContactRound,
   AlertCircle,
   Camera,
+  Settings,
 } from "lucide-react";
 import { StatsCards } from "@/components/dashboard/StatsCards";
 import { ActivityChart } from "@/components/dashboard/ActivityChart";
@@ -215,6 +216,12 @@ export default function DashboardPage() {
               <Link href="/scan">
                 <Camera className="h-4 w-4" />
                 <span className="hidden sm:inline">สแกน</span>
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/admin/events">
+                <Settings className="h-4 w-4" />
+                <span className="hidden sm:inline">Events</span>
               </Link>
             </Button>
             <Button

@@ -78,10 +78,60 @@ function sanitizeName(s: string): string {
 
 export type UploadResult = { id: string; webViewLink: string };
 
+async function uploadOne(
+  drive: drive_v3.Drive,
+  dateFolderId: string,
+  filename: string,
+  imageBase64: string
+): Promise<UploadResult> {
+  const cleanBase64 = imageBase64.includes(",")
+    ? imageBase64.split(",")[1]
+    : imageBase64;
+  const buffer = Buffer.from(cleanBase64, "base64");
+  if (buffer.length < 100) {
+    throw new Error(
+      `Image buffer suspiciously small (${buffer.length} bytes). base64 length=${cleanBase64.length}`
+    );
+  }
+
+  const stream = new PassThrough();
+  stream.end(buffer);
+
+  const created = await drive.files.create({
+    requestBody: { name: filename, parents: [dateFolderId] },
+    media: { mimeType: "image/jpeg", body: stream },
+    fields: "id, webViewLink, webContentLink, parents",
+    supportsAllDrives: true,
+  });
+
+  if (!created.data.id) throw new Error("Drive upload returned no file id");
+
+  console.log(
+    `[drive] uploaded ${filename} (${buffer.length} bytes): id=${created.data.id}`
+  );
+
+  return {
+    id: created.data.id,
+    webViewLink:
+      created.data.webViewLink ||
+      `https://drive.google.com/file/d/${created.data.id}/view`,
+  };
+}
+
 export async function uploadCardImage(
   imageBase64: string,
   contactName: string
 ): Promise<UploadResult> {
+  const results = await uploadCardImages([imageBase64], contactName);
+  return results[0];
+}
+
+export async function uploadCardImages(
+  imagesBase64: string[],
+  contactName: string
+): Promise<UploadResult[]> {
+  if (imagesBase64.length === 0) return [];
+
   const sheetId = process.env.GOOGLE_SHEET_ID;
   if (!sheetId) throw new Error("Missing GOOGLE_SHEET_ID");
 
@@ -99,49 +149,14 @@ export async function uploadCardImage(
   const timeStr = `${pad(now.getHours())}${pad(now.getMinutes())}${pad(
     now.getSeconds()
   )}`;
-  const filename = `${timeStr}_${sanitizeName(contactName)}.jpg`;
+  const safeName = sanitizeName(contactName);
 
-  // Strip data URL prefix if present
-  const cleanBase64 = imageBase64.includes(",")
-    ? imageBase64.split(",")[1]
-    : imageBase64;
-  const buffer = Buffer.from(cleanBase64, "base64");
-  if (buffer.length < 100) {
-    throw new Error(
-      `Image buffer suspiciously small (${buffer.length} bytes). base64 length=${cleanBase64.length}`
-    );
+  const results: UploadResult[] = [];
+  for (let i = 0; i < imagesBase64.length; i++) {
+    const suffix = imagesBase64.length > 1 ? `_${i + 1}` : "";
+    const filename = `${timeStr}_${safeName}${suffix}.jpg`;
+    const r = await uploadOne(drive, dateFolderId, filename, imagesBase64[i]);
+    results.push(r);
   }
-
-  const stream = new PassThrough();
-  stream.end(buffer);
-
-  console.log(
-    `[drive] uploading ${filename} (${buffer.length} bytes) to ${event_dateFolder(dateFolderId)}`
-  );
-
-  const created = await drive.files.create({
-    requestBody: { name: filename, parents: [dateFolderId] },
-    media: { mimeType: "image/jpeg", body: stream },
-    fields: "id, webViewLink, webContentLink, parents",
-    supportsAllDrives: true,
-  });
-
-  if (!created.data.id) throw new Error("Drive upload returned no file id");
-
-  console.log(
-    `[drive] uploaded: id=${created.data.id} parents=${JSON.stringify(
-      created.data.parents
-    )} link=${created.data.webViewLink}`
-  );
-
-  return {
-    id: created.data.id,
-    webViewLink:
-      created.data.webViewLink ||
-      `https://drive.google.com/file/d/${created.data.id}/view`,
-  };
-}
-
-function event_dateFolder(id: string): string {
-  return `folder=${id}`;
+  return results;
 }

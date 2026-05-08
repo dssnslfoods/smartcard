@@ -14,6 +14,12 @@ export type CardData = {
 };
 
 const SYSTEM_PROMPT = `คุณเป็น OCR สำหรับนามบัตร อ่านข้อมูลจากรูปนามบัตรแล้วคืนค่าเป็น JSON ตาม schema
+
+หมายเหตุสำคัญ:
+- ผู้ใช้อาจส่งหลายรูป — เป็นหน้าหน้า/หน้าหลังของนามบัตรเดียวกัน หรือนามบัตรใบเดียว
+- รวมข้อมูลจากทุกรูปเข้าด้วยกัน (หน้า + หลัง) เป็น JSON เดียว
+- ถ้าฟิลด์เดียวกันปรากฏในหลายรูป ใช้ค่าที่ชัดเจน/ครบที่สุด
+
 - name: ชื่อ-นามสกุล (ใส่คำนำหน้าถ้ามี)
 - position: ตำแหน่งงาน
 - company: ชื่อบริษัท
@@ -80,17 +86,23 @@ async function callGemini(
   throw new Error(`${model} failed: ${lastErr}`);
 }
 
-export async function extractCardFromImage(imageBase64: string): Promise<CardData> {
+export async function extractCardFromImage(
+  imageBase64: string | string[]
+): Promise<CardData> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("Missing GEMINI_API_KEY");
+
+  const images = Array.isArray(imageBase64) ? imageBase64 : [imageBase64];
+  if (images.length === 0) throw new Error("No images provided");
+
+  const imageParts = images.map((b64) => ({
+    inline_data: { mime_type: "image/jpeg", data: b64 },
+  }));
 
   const body = {
     contents: [
       {
-        parts: [
-          { inline_data: { mime_type: "image/jpeg", data: imageBase64 } },
-          { text: SYSTEM_PROMPT },
-        ],
+        parts: [...imageParts, { text: SYSTEM_PROMPT }],
       },
     ],
     generationConfig: {

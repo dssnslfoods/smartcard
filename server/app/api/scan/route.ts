@@ -1,15 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractCardFromImage } from "@/lib/gemini";
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const { imageBase64 } = await req.json();
-    if (!imageBase64 || typeof imageBase64 !== "string") {
-      return NextResponse.json({ error: "imageBase64 is required" }, { status: 400 });
+    const body = (await req.json()) as {
+      imageBase64?: string;
+      imagesBase64?: string[];
+    };
+    const images: string[] =
+      body.imagesBase64 && Array.isArray(body.imagesBase64)
+        ? body.imagesBase64.filter((s) => typeof s === "string" && s.length > 0)
+        : body.imageBase64 && typeof body.imageBase64 === "string"
+        ? [body.imageBase64]
+        : [];
+
+    if (images.length === 0) {
+      return NextResponse.json(
+        { error: "imageBase64 or imagesBase64 is required" },
+        { status: 400 }
+      );
     }
-    const card = await extractCardFromImage(imageBase64);
+    if (images.length > 4) {
+      return NextResponse.json(
+        { error: "Too many images (max 4)" },
+        { status: 400 }
+      );
+    }
+
+    const card = await extractCardFromImage(images);
     return NextResponse.json(card);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

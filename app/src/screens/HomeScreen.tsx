@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -19,18 +20,17 @@ type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
 export default function HomeScreen({ navigation }: Props) {
   const [busy, setBusy] = useState(false);
+  const [images, setImages] = useState<{ base64: string; uri: string }[]>([]);
   const deviceLabel = getDeviceLabel();
 
-  const handleImage = async (uri: string) => {
+  const addImage = async (uri: string) => {
     try {
-      setBusy(true);
       const base64 = await prepareForUpload(uri);
-      const card = await scanBusinessCard(base64);
-      navigation.navigate("Review", { card, imageBase64: base64 });
+      setImages((prev) =>
+        prev.length < 2 ? [...prev, { base64, uri }] : prev
+      );
     } catch (e) {
       Alert.alert("เกิดข้อผิดพลาด", e instanceof Error ? e.message : String(e));
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -46,7 +46,7 @@ export default function HomeScreen({ navigation }: Props) {
       allowsEditing: false,
     });
     if (result.canceled || !result.assets?.[0]?.uri) return;
-    handleImage(result.assets[0].uri);
+    addImage(result.assets[0].uri);
   };
 
   const onPickPhoto = async () => {
@@ -61,8 +61,29 @@ export default function HomeScreen({ navigation }: Props) {
       allowsEditing: false,
     });
     if (result.canceled || !result.assets?.[0]?.uri) return;
-    handleImage(result.assets[0].uri);
+    addImage(result.assets[0].uri);
   };
+
+  const removeImage = (idx: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const onScan = async () => {
+    if (images.length === 0) return;
+    try {
+      setBusy(true);
+      const imagesBase64 = images.map((i) => i.base64);
+      const card = await scanBusinessCard(imagesBase64);
+      navigation.navigate("Review", { card, imagesBase64 });
+      setImages([]);
+    } catch (e) {
+      Alert.alert("เกิดข้อผิดพลาด", e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const canAddMore = images.length < 2;
 
   return (
     <View style={styles.container}>
@@ -72,22 +93,80 @@ export default function HomeScreen({ navigation }: Props) {
         <Text style={styles.device}>เครื่อง: {deviceLabel}</Text>
       </View>
 
-      <View style={styles.actions}>
-        <Pressable
-          style={({ pressed }) => [styles.button, styles.primary, pressed && styles.pressed]}
-          onPress={onTakePhoto}
-          disabled={busy}
-        >
-          <Text style={styles.buttonText}>📷 ถ่ายรูปนามบัตร</Text>
-        </Pressable>
+      {images.length > 0 && (
+        <View style={styles.previewBlock}>
+          <Text style={styles.previewLabel}>
+            รูปที่จะสแกน ({images.length}/2)
+          </Text>
+          <View style={styles.previewRow}>
+            {images.map((img, idx) => (
+              <View key={idx} style={styles.thumbWrap}>
+                <Image source={{ uri: img.uri }} style={styles.thumb} />
+                <Pressable
+                  onPress={() => removeImage(idx)}
+                  style={styles.thumbX}
+                >
+                  <Text style={styles.thumbXText}>✕</Text>
+                </Pressable>
+                <Text style={styles.thumbCaption}>
+                  {idx === 0 ? "ด้านหน้า" : "ด้านหลัง"}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
 
-        <Pressable
-          style={({ pressed }) => [styles.button, styles.secondary, pressed && styles.pressed]}
-          onPress={onPickPhoto}
-          disabled={busy}
-        >
-          <Text style={[styles.buttonText, styles.secondaryText]}>🖼  เลือกจากคลังรูปภาพ</Text>
-        </Pressable>
+      <View style={styles.actions}>
+        {canAddMore && (
+          <>
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                styles.primary,
+                pressed && styles.pressed,
+              ]}
+              onPress={onTakePhoto}
+              disabled={busy}
+            >
+              <Text style={styles.buttonText}>
+                {images.length === 0
+                  ? "📷 ถ่ายรูปนามบัตร"
+                  : "➕ ถ่ายเพิ่ม (หน้าหลัง)"}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                styles.secondary,
+                pressed && styles.pressed,
+              ]}
+              onPress={onPickPhoto}
+              disabled={busy}
+            >
+              <Text style={[styles.buttonText, styles.secondaryText]}>
+                🖼  เลือกจากคลังรูปภาพ
+              </Text>
+            </Pressable>
+          </>
+        )}
+
+        {images.length > 0 && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              styles.scan,
+              pressed && styles.pressed,
+            ]}
+            onPress={onScan}
+            disabled={busy}
+          >
+            <Text style={styles.buttonText}>
+              ✨ สแกน {images.length} รูป
+            </Text>
+          </Pressable>
+        )}
       </View>
 
       {busy && (
@@ -106,11 +185,37 @@ const styles = StyleSheet.create({
   title: { fontSize: 36, fontWeight: "800", color: "#fff" },
   subtitle: { fontSize: 16, color: "#94a3b8", marginTop: 4 },
   device: { fontSize: 13, color: "#64748b", marginTop: 16 },
-  actions: { gap: 16, marginBottom: 48 },
-  button: { padding: 20, borderRadius: 16, alignItems: "center" },
+  previewBlock: { marginVertical: 16 },
+  previewLabel: { color: "#94a3b8", fontSize: 13, fontWeight: "600", marginBottom: 8 },
+  previewRow: { flexDirection: "row", gap: 12 },
+  thumbWrap: { alignItems: "center" },
+  thumb: {
+    width: 130,
+    height: 90,
+    borderRadius: 10,
+    backgroundColor: "#1e293b",
+    borderWidth: 2,
+    borderColor: "#334155",
+  },
+  thumbX: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    backgroundColor: "#dc2626",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thumbXText: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  thumbCaption: { color: "#cbd5e1", fontSize: 11, marginTop: 6, fontWeight: "600" },
+  actions: { gap: 12, marginBottom: 48 },
+  button: { padding: 18, borderRadius: 16, alignItems: "center" },
   primary: { backgroundColor: "#3b82f6" },
   secondary: { backgroundColor: "transparent", borderWidth: 2, borderColor: "#475569" },
-  buttonText: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  scan: { backgroundColor: "#16a34a" },
+  buttonText: { color: "#fff", fontSize: 17, fontWeight: "700" },
   secondaryText: { color: "#cbd5e1" },
   pressed: { opacity: 0.7 },
   overlay: {

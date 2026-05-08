@@ -70,11 +70,14 @@ const FIELDS: { key: keyof CardData; label: string; multiline?: boolean; type?: 
 type Step = "home" | "scanning" | "review" | "event" | "saving" | "done";
 type MultiState = { selected: string[]; other: string };
 type EventStateValue = string | MultiState;
+type ImageEntry = { base64: string; preview: string };
+
+const MAX_IMAGES = 2;
 
 export default function ScanPage() {
   const [step, setStep] = useState<Step>("home");
   const [card, setCard] = useState<CardData>(empty);
-  const [imageBase64, setImageBase64] = useState<string>("");
+  const [images, setImages] = useState<ImageEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [device, setDevice] = useState("");
   const [editingDevice, setEditingDevice] = useState(false);
@@ -107,14 +110,35 @@ export default function ScanPage() {
   const handleFile = async (file: File | null) => {
     if (!file) return;
     setError(null);
-    setStep("scanning");
     try {
       const base64 = await fileToResizedBase64(file);
-      setImageBase64(base64);
+      const preview = URL.createObjectURL(file);
+      setImages((prev) =>
+        prev.length < MAX_IMAGES ? [...prev, { base64, preview }] : prev
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const removeImage = (idx: number) => {
+    setImages((prev) => {
+      const removed = prev[idx];
+      if (removed?.preview.startsWith("blob:")) URL.revokeObjectURL(removed.preview);
+      return prev.filter((_, i) => i !== idx);
+    });
+  };
+
+  const onScan = async () => {
+    if (images.length === 0) return;
+    setError(null);
+    setStep("scanning");
+    try {
+      const imagesBase64 = images.map((i) => i.base64);
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64 }),
+        body: JSON.stringify({ imagesBase64 }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -150,10 +174,11 @@ export default function ScanPage() {
     setStep("saving");
     setError(null);
     try {
+      const imagesBase64 = images.map((i) => i.base64);
       const res = await fetch("/api/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ card, deviceLabel: device || "Web", imageBase64 }),
+        body: JSON.stringify({ card, deviceLabel: device || "Web", imagesBase64 }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -184,6 +209,7 @@ export default function ScanPage() {
           response[f.key] = v as string;
         }
       }
+      const imagesBase64 = images.map((i) => i.base64);
       const res = await fetch("/api/save-event", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -191,7 +217,7 @@ export default function ScanPage() {
           eventId: event.id,
           card,
           deviceLabel: device || "Web",
-          imageBase64,
+          imagesBase64,
           response,
         }),
       });
@@ -210,7 +236,10 @@ export default function ScanPage() {
 
   const reset = () => {
     setCard(empty);
-    setImageBase64("");
+    images.forEach((i) => {
+      if (i.preview.startsWith("blob:")) URL.revokeObjectURL(i.preview);
+    });
+    setImages([]);
     setError(null);
     setSelectedEventId("");
     setEventState({});
@@ -275,34 +304,89 @@ export default function ScanPage() {
                 accept="image/*"
                 capture="environment"
                 className="hidden"
-                onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  handleFile(e.target.files?.[0] ?? null);
+                  if (cameraRef.current) cameraRef.current.value = "";
+                }}
               />
               <input
                 ref={galleryRef}
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  handleFile(e.target.files?.[0] ?? null);
+                  if (galleryRef.current) galleryRef.current.value = "";
+                }}
               />
-              <Button
-                size="lg"
-                className="w-full h-16 text-base"
-                onClick={() => cameraRef.current?.click()}
-                disabled={!device || editingDevice}
-              >
-                <Camera className="h-5 w-5" />
-                ถ่ายรูปนามบัตร
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="w-full h-16 text-base"
-                onClick={() => galleryRef.current?.click()}
-                disabled={!device || editingDevice}
-              >
-                <ImageIcon className="h-5 w-5" />
-                เลือกจากคลังรูปภาพ
-              </Button>
+
+              {images.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground font-medium">
+                    รูปที่จะสแกน ({images.length}/{MAX_IMAGES})
+                  </div>
+                  <div className="flex gap-2">
+                    {images.map((img, idx) => (
+                      <div key={idx} className="relative">
+                        <img
+                          src={img.preview}
+                          alt={`scan-${idx}`}
+                          className="w-32 h-24 object-cover rounded-md border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(idx)}
+                          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center"
+                          title="ลบรูปนี้"
+                        >
+                          ✕
+                        </button>
+                        <div className="text-[11px] text-center text-muted-foreground mt-1 font-medium">
+                          {idx === 0 ? "ด้านหน้า" : "ด้านหลัง"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {images.length < MAX_IMAGES && (
+                <>
+                  <Button
+                    size="lg"
+                    className="w-full h-16 text-base"
+                    onClick={() => cameraRef.current?.click()}
+                    disabled={!device || editingDevice}
+                  >
+                    <Camera className="h-5 w-5" />
+                    {images.length === 0
+                      ? "ถ่ายรูปนามบัตร"
+                      : "ถ่ายเพิ่ม (หน้าหลัง)"}
+                  </Button>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full h-16 text-base"
+                    onClick={() => galleryRef.current?.click()}
+                    disabled={!device || editingDevice}
+                  >
+                    <ImageIcon className="h-5 w-5" />
+                    เลือกจากคลังรูปภาพ
+                  </Button>
+                </>
+              )}
+
+              {images.length > 0 && (
+                <Button
+                  size="lg"
+                  className="w-full h-16 text-base bg-emerald-600 hover:bg-emerald-700"
+                  onClick={onScan}
+                  disabled={!device || editingDevice}
+                >
+                  ✨ สแกน {images.length} รูป
+                </Button>
+              )}
+
               {!device && (
                 <p className="text-xs text-muted-foreground text-center pt-2">
                   ใส่ชื่อเครื่อง/ผู้บันทึกด้านบนก่อน

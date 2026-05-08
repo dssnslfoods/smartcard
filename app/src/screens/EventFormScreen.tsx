@@ -23,7 +23,7 @@ type Props = NativeStackScreenProps<RootStackParamList, "EventForm">;
 type MultiState = { selected: string[]; other: string };
 
 export default function EventFormScreen({ navigation, route }: Props) {
-  const { card, imageBase64, event } = route.params;
+  const { card, imagesBase64, event } = route.params;
   const deviceLabel = getDeviceLabel();
   const [saving, setSaving] = useState(false);
 
@@ -69,7 +69,7 @@ export default function EventFormScreen({ navigation, route }: Props) {
           response[f.key] = v as string;
         }
       }
-      await saveEventCard(event.id, card, deviceLabel, imageBase64, response);
+      await saveEventCard(event.id, card, deviceLabel, imagesBase64, response);
       Alert.alert(
         "บันทึกเรียบร้อย",
         `ข้อมูลถูกเพิ่มลง ${event.sheetTab} แล้ว`,

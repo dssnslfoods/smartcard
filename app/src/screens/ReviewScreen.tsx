@@ -41,7 +41,7 @@ export default function ReviewScreen({ navigation, route }: Props) {
   const [events, setEvents] = useState<EventConfig[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const deviceLabel = getDeviceLabel();
-  const imageBase64 = route.params.imageBase64;
+  const imagesBase64 = route.params.imagesBase64;
 
   useEffect(() => {
     getEvents()
@@ -56,7 +56,7 @@ export default function ReviewScreen({ navigation, route }: Props) {
   const onSaveNoEvent = async () => {
     try {
       setSaving(true);
-      await saveBusinessCard(card, deviceLabel, imageBase64);
+      await saveBusinessCard(card, deviceLabel, imagesBase64);
       Alert.alert("บันทึกเรียบร้อย", "ข้อมูลถูกเพิ่มลง Google Sheet แล้ว", [
         { text: "ตกลง", onPress: () => navigation.popToTop() },
       ]);
@@ -70,7 +70,7 @@ export default function ReviewScreen({ navigation, route }: Props) {
   const onContinueToEvent = () => {
     const event = events.find((e) => e.id === selectedEventId);
     if (!event) return;
-    navigation.navigate("EventForm", { card, imageBase64, event });
+    navigation.navigate("EventForm", { card, imagesBase64, event });
   };
 
   return (

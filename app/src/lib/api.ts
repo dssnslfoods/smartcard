@@ -1,12 +1,14 @@
 import { API_BASE_URL, ASSERT_API_BASE_URL } from "../config";
 import type { CardData, EventConfig, EventResponse } from "../types";
 
-export async function scanBusinessCard(imageBase64: string): Promise<CardData> {
+export async function scanBusinessCard(
+  imagesBase64: string[]
+): Promise<CardData> {
   ASSERT_API_BASE_URL();
   const res = await fetch(`${API_BASE_URL}/api/scan`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ imageBase64 }),
+    body: JSON.stringify({ imagesBase64 }),
   });
   const text = await res.text();
   if (!res.ok) {
@@ -18,13 +20,13 @@ export async function scanBusinessCard(imageBase64: string): Promise<CardData> {
 export async function saveBusinessCard(
   card: CardData,
   deviceLabel: string,
-  imageBase64: string
-): Promise<{ ok: true; imageUrl?: string }> {
+  imagesBase64: string[]
+): Promise<{ ok: true; imageUrl?: string; imageError?: string }> {
   ASSERT_API_BASE_URL();
   const res = await fetch(`${API_BASE_URL}/api/save`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ card, deviceLabel, imageBase64 }),
+    body: JSON.stringify({ card, deviceLabel, imagesBase64 }),
   });
   const text = await res.text();
   if (!res.ok) {
@@ -46,14 +48,14 @@ export async function saveEventCard(
   eventId: string,
   card: CardData,
   deviceLabel: string,
-  imageBase64: string,
+  imagesBase64: string[],
   response: EventResponse
-): Promise<{ ok: true; imageUrl?: string }> {
+): Promise<{ ok: true; imageUrl?: string; imageError?: string }> {
   ASSERT_API_BASE_URL();
   const res = await fetch(`${API_BASE_URL}/api/save-event`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ eventId, card, deviceLabel, imageBase64, response }),
+    body: JSON.stringify({ eventId, card, deviceLabel, imagesBase64, response }),
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`Save event failed (${res.status}): ${text}`);

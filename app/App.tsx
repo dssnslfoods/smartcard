@@ -10,8 +10,8 @@ import type { CardData, EventConfig } from "./src/types";
 
 export type RootStackParamList = {
   Home: undefined;
-  Review: { card: CardData; imageBase64: string };
-  EventForm: { card: CardData; imageBase64: string; event: EventConfig };
+  Review: { card: CardData; imagesBase64: string[] };
+  EventForm: { card: CardData; imagesBase64: string[]; event: EventConfig };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

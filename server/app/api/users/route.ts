@@ -69,9 +69,21 @@ export async function POST(req: Request) {
     company_id?: string | null;
   };
 
-  if (!body.email || !body.password) {
+  // Normalize email — strip whitespace, zero-width chars, lowercase
+  const cleanEmail = (body.email ?? "")
+    .replace(/[\s​-‍﻿]/g, "")
+    .trim()
+    .toLowerCase();
+
+  if (!cleanEmail || !body.password) {
     return NextResponse.json(
       { error: "email and password are required" },
+      { status: 400 }
+    );
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+    return NextResponse.json(
+      { error: `รูปแบบอีเมลไม่ถูกต้อง: "${cleanEmail}"` },
       { status: 400 }
     );
   }
@@ -113,11 +125,11 @@ export async function POST(req: Request) {
   const service = createServiceClient();
 
   const { data: authData, error: authErr } = await service.auth.admin.createUser({
-    email: body.email,
+    email: cleanEmail,
     password: body.password,
     email_confirm: true,
     user_metadata: {
-      name: body.display_name ?? body.email,
+      name: body.display_name ?? cleanEmail,
       role: targetRole,
       ...(targetCompanyId ? { company_id: targetCompanyId } : {}),
     },
@@ -132,7 +144,7 @@ export async function POST(req: Request) {
   const { error: profErr } = await service
     .from("profiles")
     .update({
-      display_name: body.display_name ?? body.email,
+      display_name: body.display_name ?? cleanEmail,
       role: targetRole,
       company_id: targetCompanyId,
     })

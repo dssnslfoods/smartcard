@@ -114,10 +114,33 @@ export async function DELETE(
 ) {
   const { id } = await params;
   const supabase = await createClient();
-  const { error } = await supabase
+
+  // 1. Get contact_id from this attendance
+  const { data: att } = await supabase
     .from("attendances")
-    .update({ deleted_at: new Date().toISOString() })
+    .select("contact_id")
+    .eq("id", id)
+    .maybeSingle();
+
+  // 2. Hard delete the attendance
+  const { error: delErr } = await supabase
+    .from("attendances")
+    .delete()
     .eq("id", id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (delErr)
+    return NextResponse.json({ error: delErr.message }, { status: 400 });
+
+  // 3. If this was the last attendance for the contact, delete the contact too
+  if (att?.contact_id) {
+    const { count } = await supabase
+      .from("attendances")
+      .select("id", { count: "exact", head: true })
+      .eq("contact_id", att.contact_id);
+
+    if ((count ?? 0) === 0) {
+      await supabase.from("contacts").delete().eq("id", att.contact_id);
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }

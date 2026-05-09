@@ -73,11 +73,11 @@ export function ContactDeleteDialog({
             )}
           </div>
           <p className="text-xs text-muted-foreground">
-            • รายการนี้จะถูก soft-delete (ไม่ลบจริงในฐานข้อมูล)
+            • รายการ scan นี้จะถูกลบถาวรออกจากฐานข้อมูล
             <br />
-            • ข้อมูลนามบัตรหลัก (master contact) ยังคงอยู่
+            • ถ้าเป็น scan สุดท้ายของลูกค้า → ลบนามบัตรหลักด้วย
             <br />
-            • ลบได้เฉพาะการ scan ครั้งนี้
+            • รูปใน Storage ยังคงอยู่ (ลบเองได้ถ้าต้องการ)
           </p>
 
           {err && (

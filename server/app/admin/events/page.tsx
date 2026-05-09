@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  ArrowLeft,
   Plus,
   Pencil,
   Trash2,
@@ -16,11 +14,13 @@ import {
   ChevronUp,
   ChevronDown,
   Save,
+  Calendar,
 } from "lucide-react";
+import type { EventField, EventRow } from "@/lib/supabase/types";
 
 type FieldType = "text" | "textarea" | "multiselect";
 
-type EventField = {
+type FieldDraft = {
   type: FieldType;
   key: string;
   labelTh: string;
@@ -31,23 +31,26 @@ type EventField = {
   allowOther?: boolean;
 };
 
-type EventConfig = {
-  id: string;
+type EventDraft = {
+  id?: string;
+  slug: string;
   name: string;
-  sheetTab: string;
+  description: string;
+  event_date: string;
+  fields: FieldDraft[];
   active: boolean;
-  fields: EventField[];
 };
 
-const emptyEvent = (): EventConfig => ({
-  id: "",
+const emptyDraft = (): EventDraft => ({
+  slug: "",
   name: "",
-  sheetTab: "",
-  active: true,
+  description: "",
+  event_date: "",
   fields: [],
+  active: true,
 });
 
-const newField = (): EventField => ({
+const newField = (): FieldDraft => ({
   type: "text",
   key: "",
   labelTh: "",
@@ -55,10 +58,10 @@ const newField = (): EventField => ({
 });
 
 export default function AdminEventsPage() {
-  const [events, setEvents] = useState<EventConfig[]>([]);
+  const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<EventConfig | null>(null);
+  const [editing, setEditing] = useState<EventDraft | null>(null);
   const [isNew, setIsNew] = useState(false);
 
   const load = useCallback(async () => {
@@ -70,7 +73,7 @@ export default function AdminEventsPage() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || `HTTP ${res.status}`);
       }
-      const data = (await res.json()) as { events: EventConfig[] };
+      const data = (await res.json()) as { events: EventRow[] };
       setEvents(data.events ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -84,21 +87,32 @@ export default function AdminEventsPage() {
   }, [load]);
 
   const onCreate = () => {
-    setEditing(emptyEvent());
+    setEditing(emptyDraft());
     setIsNew(true);
   };
 
-  const onEdit = (ev: EventConfig) => {
-    setEditing(JSON.parse(JSON.stringify(ev)));
+  const onEdit = (ev: EventRow) => {
+    setEditing({
+      id: ev.id,
+      slug: ev.slug,
+      name: ev.name,
+      description: ev.description ?? "",
+      event_date: ev.event_date ?? "",
+      fields: (ev.fields ?? []) as FieldDraft[],
+      active: ev.active,
+    });
     setIsNew(false);
   };
 
-  const onDelete = async (ev: EventConfig) => {
-    if (!confirm(`ลบ event "${ev.name}" ใช่ไหม? (tab ใน spreadsheet จะไม่ถูกลบ)`)) return;
+  const onDelete = async (ev: EventRow) => {
+    if (
+      !confirm(
+        `ลบ event "${ev.name}" ใช่ไหม?\nข้อมูลนามบัตรที่ผูก event นี้ยังเก็บไว้`
+      )
+    )
+      return;
     try {
-      const res = await fetch(`/api/events?id=${encodeURIComponent(ev.id)}`, {
-        method: "DELETE",
-      });
+      const res = await fetch(`/api/events/${ev.id}`, { method: "DELETE" });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || `HTTP ${res.status}`);
@@ -110,74 +124,99 @@ export default function AdminEventsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <header className="border-b bg-background sticky top-0 z-30 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="container mx-auto max-w-5xl px-4 py-4 flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-            <span>Dashboard</span>
-          </Link>
-          <h1 className="font-semibold">⚙️ จัดการ Events</h1>
-          <Button size="sm" onClick={onCreate}>
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">เพิ่ม Event</span>
-          </Button>
+    <div className="container mx-auto max-w-5xl px-4 py-6 space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">จัดการ Events</h1>
+          <p className="text-sm text-muted-foreground">
+            สร้าง/แก้ไข event ที่จะใช้ตอนสแกนนามบัตร
+          </p>
         </div>
-      </header>
+        <Button onClick={onCreate}>
+          <Plus className="h-4 w-4" />
+          เพิ่ม Event
+        </Button>
+      </div>
 
-      <main className="container mx-auto max-w-5xl px-4 py-6 space-y-4">
-        {error && (
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 flex items-start gap-2">
-            <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-            <div className="text-sm text-destructive">{error}</div>
-          </div>
-        )}
+      {error && (
+        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 flex items-start gap-2">
+          <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+          <div className="text-sm text-destructive">{error}</div>
+        </div>
+      )}
 
-        {loading ? (
-          <div className="space-y-3">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-[80px] rounded-xl border bg-card animate-pulse" />
-            ))}
-          </div>
-        ) : events.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center text-muted-foreground">
-              ยังไม่มี event — กด "เพิ่ม Event" เพื่อเริ่มสร้าง
-            </CardContent>
-          </Card>
-        ) : (
-          events.map((ev) => (
-            <Card key={ev.id}>
-              <CardContent className="p-4 flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold truncate">{ev.name}</span>
-                    {!ev.active && (
-                      <span className="text-xs bg-muted px-2 py-0.5 rounded">inactive</span>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground truncate mt-0.5">
-                    id: <code>{ev.id}</code> · tab: <code>{ev.sheetTab}</code> ·{" "}
-                    {ev.fields.length} fields
-                  </div>
+      {loading ? (
+        <div className="space-y-3">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-[88px] rounded-xl border bg-card animate-pulse"
+            />
+          ))}
+        </div>
+      ) : events.length === 0 ? (
+        <Card>
+          <CardContent className="p-12 text-center text-muted-foreground">
+            ยังไม่มี event — กด "เพิ่ม Event" เพื่อเริ่มสร้าง
+          </CardContent>
+        </Card>
+      ) : (
+        events.map((ev) => (
+          <Card
+            key={ev.id}
+            className={ev.archived_at ? "opacity-60" : undefined}
+          >
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold truncate">{ev.name}</span>
+                  {ev.archived_at && (
+                    <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
+                      archived
+                    </span>
+                  )}
+                  {!ev.active && !ev.archived_at && (
+                    <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                      inactive
+                    </span>
+                  )}
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => onEdit(ev)} title="แก้ไข">
-                  <Pencil className="h-4 w-4" />
-                </Button>
+                <div className="text-xs text-muted-foreground truncate mt-0.5 flex items-center gap-3">
+                  <span>
+                    slug: <code>{ev.slug}</code>
+                  </span>
+                  {ev.event_date && (
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {ev.event_date}
+                    </span>
+                  )}
+                  <span>{(ev.fields ?? []).length} fields</span>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onEdit(ev)}
+                title="แก้ไข"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              {!ev.archived_at && (
                 <Button
                   variant="ghost"
                   size="icon"
                   className="text-destructive hover:text-destructive"
                   onClick={() => onDelete(ev)}
-                  title="ลบ"
+                  title="Archive"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </main>
+              )}
+            </CardContent>
+          </Card>
+        ))
+      )}
 
       {editing && (
         <EventEditor
@@ -200,35 +239,31 @@ function EventEditor({
   onClose,
   onSaved,
 }: {
-  event: EventConfig;
+  event: EventDraft;
   isNew: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [draft, setDraft] = useState<EventConfig>(event);
+  const [draft, setDraft] = useState<EventDraft>(event);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const setMeta = <K extends keyof EventConfig>(key: K, value: EventConfig[K]) => {
+  const setMeta = <K extends keyof EventDraft>(key: K, value: EventDraft[K]) =>
     setDraft((d) => ({ ...d, [key]: value }));
-  };
 
-  const updateField = (idx: number, patch: Partial<EventField>) => {
+  const updateField = (idx: number, patch: Partial<FieldDraft>) =>
     setDraft((d) => ({
       ...d,
       fields: d.fields.map((f, i) => (i === idx ? { ...f, ...patch } : f)),
     }));
-  };
 
-  const addField = () => {
+  const addField = () =>
     setDraft((d) => ({ ...d, fields: [...d.fields, newField()] }));
-  };
 
-  const removeField = (idx: number) => {
+  const removeField = (idx: number) =>
     setDraft((d) => ({ ...d, fields: d.fields.filter((_, i) => i !== idx) }));
-  };
 
-  const moveField = (idx: number, dir: -1 | 1) => {
+  const moveField = (idx: number, dir: -1 | 1) =>
     setDraft((d) => {
       const next = [...d.fields];
       const j = idx + dir;
@@ -236,26 +271,27 @@ function EventEditor({
       [next[idx], next[j]] = [next[j], next[idx]];
       return { ...d, fields: next };
     });
-  };
 
   const validate = (): string | null => {
-    if (!draft.id.trim()) return "ใส่ id ของ event";
-    if (!/^[a-z0-9-]+$/.test(draft.id)) return "id ใช้ได้เฉพาะ a-z 0-9 และ - เท่านั้น";
+    if (!draft.slug.trim()) return "ใส่ slug ของ event";
+    if (!/^[a-z0-9-]+$/.test(draft.slug))
+      return "slug ใช้ได้เฉพาะ a-z 0-9 - เท่านั้น";
     if (!draft.name.trim()) return "ใส่ชื่อ event";
-    if (!draft.sheetTab.trim()) return "ใส่ชื่อ sheet tab";
     const keys = new Set<string>();
     for (const f of draft.fields) {
-      if (!f.key.trim()) return `field "${f.labelEn || f.labelTh || "?"}" ขาด key`;
+      if (!f.key.trim())
+        return `field "${f.labelEn || f.labelTh || "?"}" ขาด key`;
       if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(f.key))
-        return `field key "${f.key}" รูปแบบไม่ถูกต้อง (ขึ้นต้นด้วยตัวอักษร, ใช้ a-z A-Z 0-9 _)`;
+        return `field key "${f.key}" รูปแบบไม่ถูกต้อง`;
       if (keys.has(f.key)) return `field key ซ้ำ: ${f.key}`;
       keys.add(f.key);
       if (!f.labelTh.trim() && !f.labelEn.trim())
         return `field "${f.key}" ขาด label`;
-      if (f.type === "multiselect") {
-        if (!f.options || f.options.length === 0)
-          return `field "${f.key}" ต้องมี options อย่างน้อย 1 รายการ`;
-      }
+      if (
+        f.type === "multiselect" &&
+        (!f.options || f.options.filter((o) => o.trim()).length === 0)
+      )
+        return `field "${f.key}" ต้องมี options ≥ 1`;
     }
     return null;
   };
@@ -269,30 +305,52 @@ function EventEditor({
     setSaving(true);
     setErr(null);
     try {
-      const cleaned: EventConfig = {
-        ...draft,
-        fields: draft.fields.map((f) => {
-          const base: EventField = {
-            type: f.type,
+      const cleanFields: EventField[] = draft.fields.map((f) => {
+        if (f.type === "text") {
+          return {
+            type: "text" as const,
             key: f.key.trim(),
             labelTh: f.labelTh.trim(),
             labelEn: f.labelEn.trim(),
+            ...(f.placeholder ? { placeholder: f.placeholder } : {}),
           };
-          if (f.type === "text" && f.placeholder) base.placeholder = f.placeholder;
-          if (f.type === "textarea" && f.rows) base.rows = f.rows;
-          if (f.type === "multiselect") {
-            base.options = (f.options ?? [])
-              .map((o) => o.trim())
-              .filter((o) => o.length > 0);
-            base.allowOther = !!f.allowOther;
-          }
-          return base;
-        }),
+        }
+        if (f.type === "textarea") {
+          return {
+            type: "textarea" as const,
+            key: f.key.trim(),
+            labelTh: f.labelTh.trim(),
+            labelEn: f.labelEn.trim(),
+            ...(f.rows ? { rows: f.rows } : {}),
+          };
+        }
+        return {
+          type: "multiselect" as const,
+          key: f.key.trim(),
+          labelTh: f.labelTh.trim(),
+          labelEn: f.labelEn.trim(),
+          options: (f.options ?? [])
+            .map((o) => o.trim())
+            .filter((o) => o.length > 0),
+          allowOther: !!f.allowOther,
+        };
+      });
+
+      const body = {
+        slug: draft.slug,
+        name: draft.name,
+        description: draft.description || null,
+        event_date: draft.event_date || null,
+        fields: cleanFields,
+        active: draft.active,
       };
-      const res = await fetch("/api/events", {
-        method: "POST",
+
+      const url = isNew ? "/api/events" : `/api/events/${event.id}`;
+      const method = isNew ? "POST" : "PATCH";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ event: cleaned }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -326,16 +384,18 @@ function EventEditor({
           )}
 
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground">ข้อมูล Event</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground">
+              ข้อมูล Event
+            </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <Label className="mb-1.5 block">
-                  ID <span className="text-destructive">*</span>
+                  Slug <span className="text-destructive">*</span>
                 </Label>
                 <Input
-                  value={draft.id}
-                  onChange={(e) => setMeta("id", e.target.value)}
+                  value={draft.slug}
+                  onChange={(e) => setMeta("slug", e.target.value)}
                   placeholder="thaifex-2026"
                   disabled={!isNew}
                 />
@@ -354,17 +414,12 @@ function EventEditor({
                 />
               </div>
               <div>
-                <Label className="mb-1.5 block">
-                  Sheet Tab <span className="text-destructive">*</span>
-                </Label>
+                <Label className="mb-1.5 block">วันที่จัดงาน</Label>
                 <Input
-                  value={draft.sheetTab}
-                  onChange={(e) => setMeta("sheetTab", e.target.value)}
-                  placeholder="Thaifex_2026"
+                  type="date"
+                  value={draft.event_date}
+                  onChange={(e) => setMeta("event_date", e.target.value)}
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  ชื่อ tab ใน Spreadsheet (สร้างอัตโนมัติเมื่อ save ครั้งแรก)
-                </p>
               </div>
               <div className="flex items-end">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -374,8 +429,16 @@ function EventEditor({
                     onChange={(e) => setMeta("active", e.target.checked)}
                     className="w-4 h-4"
                   />
-                  <span className="text-sm">Active (แสดงในหน้าสแกน)</span>
+                  <span className="text-sm">Active</span>
                 </label>
+              </div>
+              <div className="sm:col-span-2">
+                <Label className="mb-1.5 block">รายละเอียด (optional)</Label>
+                <Textarea
+                  value={draft.description}
+                  onChange={(e) => setMeta("description", e.target.value)}
+                  rows={2}
+                />
               </div>
             </div>
           </section>
@@ -437,8 +500,8 @@ function FieldEditor({
 }: {
   index: number;
   total: number;
-  field: EventField;
-  onChange: (patch: Partial<EventField>) => void;
+  field: FieldDraft;
+  onChange: (patch: Partial<FieldDraft>) => void;
   onRemove: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -447,15 +510,17 @@ function FieldEditor({
     <Card>
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground font-mono">#{index + 1}</span>
+          <span className="text-xs text-muted-foreground font-mono">
+            #{index + 1}
+          </span>
           <select
             value={field.type}
             onChange={(e) => onChange({ type: e.target.value as FieldType })}
             className="h-9 rounded-md border border-input bg-background px-3 text-sm"
           >
-            <option value="text">Text (1 บรรทัด)</option>
-            <option value="textarea">Textarea (หลายบรรทัด)</option>
-            <option value="multiselect">Multi-select (เลือกหลายอย่าง)</option>
+            <option value="text">Text</option>
+            <option value="textarea">Textarea</option>
+            <option value="multiselect">Multi-select</option>
           </select>
           <div className="flex-1" />
           <Button
@@ -488,9 +553,7 @@ function FieldEditor({
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
-            <Label className="mb-1.5 block text-xs">
-              Key <span className="text-destructive">*</span>
-            </Label>
+            <Label className="mb-1.5 block text-xs">Key *</Label>
             <Input
               value={field.key}
               onChange={(e) => onChange({ key: e.target.value })}
@@ -503,7 +566,6 @@ function FieldEditor({
             <Input
               value={field.labelTh}
               onChange={(e) => onChange({ labelTh: e.target.value })}
-              placeholder="Line ID"
             />
           </div>
           <div>
@@ -511,14 +573,13 @@ function FieldEditor({
             <Input
               value={field.labelEn}
               onChange={(e) => onChange({ labelEn: e.target.value })}
-              placeholder="Line ID"
             />
           </div>
         </div>
 
         {field.type === "text" && (
           <div>
-            <Label className="mb-1.5 block text-xs">Placeholder (optional)</Label>
+            <Label className="mb-1.5 block text-xs">Placeholder</Label>
             <Input
               value={field.placeholder ?? ""}
               onChange={(e) => onChange({ placeholder: e.target.value })}
@@ -534,7 +595,9 @@ function FieldEditor({
               min={1}
               max={10}
               value={field.rows ?? 3}
-              onChange={(e) => onChange({ rows: Number(e.target.value) || 3 })}
+              onChange={(e) =>
+                onChange({ rows: Number(e.target.value) || 3 })
+              }
             />
           </div>
         )}
@@ -543,15 +606,17 @@ function FieldEditor({
           <div className="space-y-2">
             <div>
               <Label className="mb-1.5 block text-xs">
-                Options <span className="text-destructive">*</span> (1 บรรทัดต่อ 1 ตัวเลือก)
+                Options * (1 บรรทัด/ตัวเลือก)
               </Label>
               <Textarea
                 value={(field.options ?? []).join("\n")}
                 onChange={(e) =>
-                  onChange({ options: e.target.value.split("\n").map((s) => s) })
+                  onChange({
+                    options: e.target.value.split("\n").map((s) => s),
+                  })
                 }
                 rows={5}
-                placeholder="Manufacturer&#10;Wholesaler&#10;Hotel"
+                placeholder="Manufacturer&#10;Hotel&#10;Restaurant"
                 className="font-mono text-sm"
               />
             </div>
@@ -562,7 +627,7 @@ function FieldEditor({
                 onChange={(e) => onChange({ allowOther: e.target.checked })}
                 className="w-4 h-4"
               />
-              <span className="text-sm">มีช่อง "อื่นๆ ระบุ..." (เพิ่มอีก 1 column)</span>
+              <span className="text-sm">มีช่อง "อื่นๆ ระบุ..."</span>
             </label>
           </div>
         )}

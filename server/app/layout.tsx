@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "SmartCard",
-  description: "สแกนนามบัตรลง Google Sheet — ฐานข้อมูลลูกค้าสำหรับทีมขาย",
+  description: "สแกนนามบัตรด้วย AI — ฐานข้อมูลลูกค้าสำหรับทีมขาย",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

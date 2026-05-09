@@ -6,22 +6,32 @@ runConfig:
   memoryMiB: 512
 
 env:
-  - variable: GOOGLE_SHEET_TAB
-    value: Sheet1
+  # Supabase (public)
+  - variable: NEXT_PUBLIC_SUPABASE_URL
+    value: https://yppriqeewxkowlujdkkt.supabase.co
     availability:
       - BUILD
       - RUNTIME
 
+  - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
+    value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlwcHJpcWVld3hrb3dsdWpka2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyOTQzMTcsImV4cCI6MjA5Mzg3MDMxN30.pyzHQYQm0Px_XgmajBWqr4GK3IQq7vvr6EtElM4Vu4U
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Supabase service role (secret — admin operations only)
+  - variable: SUPABASE_SERVICE_ROLE_KEY
+    secret: SUPABASE_SERVICE_ROLE_KEY
+    availability:
+      - RUNTIME
+
+  # Gemini OCR
   - variable: GEMINI_API_KEY
     secret: GEMINI_API_KEY
     availability:
       - RUNTIME
 
-  - variable: GOOGLE_SHEET_ID
-    secret: GOOGLE_SHEET_ID
-    availability:
-      - RUNTIME
-
+  # Firebase Storage (image uploads still use this — already set up)
   - variable: GOOGLE_SERVICE_ACCOUNT_EMAIL
     secret: GOOGLE_SERVICE_ACCOUNT_EMAIL
     availability:

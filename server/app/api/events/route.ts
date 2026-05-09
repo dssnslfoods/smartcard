@@ -1,57 +1,68 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  listEvents,
-  upsertEvent,
-  deleteEvent,
-  type EventConfig,
-} from "@/lib/events";
+import { createClient } from "@/lib/supabase/server";
+import type { EventField } from "@/lib/supabase/types";
 
-export const maxDuration = 30;
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  try {
-    const url = new URL(req.url);
-    const all = url.searchParams.get("all") === "1";
-    const events = await listEvents(!all);
-    return NextResponse.json({ events });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("events list error:", err);
-    return NextResponse.json({ error: message }, { status: 500 });
+  const url = new URL(req.url);
+  const includeArchived = url.searchParams.get("all") === "1";
+
+  const supabase = await createClient();
+  let query = supabase
+    .from("events")
+    .select("id, slug, name, description, event_date, fields, active, created_at, archived_at")
+    .order("event_date", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+
+  if (!includeArchived) {
+    query = query.is("archived_at", null).eq("active", true);
   }
+
+  const { data, error } = await query;
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ events: data ?? [] });
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const body = (await req.json()) as { event?: EventConfig };
-    if (!body.event || !body.event.id || !body.event.sheetTab) {
-      return NextResponse.json(
-        { error: "event with id and sheetTab is required" },
-        { status: 400 }
-      );
-    }
-    await upsertEvent(body.event);
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("events upsert error:", err);
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
-}
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
-export async function DELETE(req: NextRequest) {
-  try {
-    const url = new URL(req.url);
-    const id = url.searchParams.get("id");
-    if (!id) {
-      return NextResponse.json({ error: "id is required" }, { status: 400 });
-    }
-    await deleteEvent(id);
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error("events delete error:", err);
-    return NextResponse.json({ error: message }, { status: 500 });
+  const body = (await req.json()) as {
+    slug?: string;
+    name?: string;
+    description?: string;
+    event_date?: string;
+    fields?: EventField[];
+    active?: boolean;
+  };
+
+  if (!body.slug || !body.name) {
+    return NextResponse.json(
+      { error: "slug and name are required" },
+      { status: 400 }
+    );
   }
+
+  const { data, error } = await supabase
+    .from("events")
+    .insert({
+      slug: body.slug,
+      name: body.name,
+      description: body.description ?? null,
+      event_date: body.event_date ?? null,
+      fields: body.fields ?? [],
+      active: body.active ?? true,
+      created_by: user.id,
+    })
+    .select()
+    .maybeSingle();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  return NextResponse.json({ event: data });
 }

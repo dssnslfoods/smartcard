@@ -68,11 +68,9 @@ export async function uploadCardImages(
   )}`;
   const safeName = sanitizeName(contactName);
 
-  const results: UploadResult[] = [];
-  for (let i = 0; i < imagesBase64.length; i++) {
-    const cleanBase64 = imagesBase64[i].includes(",")
-      ? imagesBase64[i].split(",")[1]
-      : imagesBase64[i];
+  // Parallel upload — concurrent instead of sequential = ~2x faster for 2 images
+  const uploads = imagesBase64.map(async (b64, i): Promise<UploadResult> => {
+    const cleanBase64 = b64.includes(",") ? b64.split(",")[1] : b64;
     const buffer = Buffer.from(cleanBase64, "base64");
     if (buffer.length < 100) {
       throw new Error(
@@ -91,9 +89,7 @@ export async function uploadCardImages(
       resumable: false,
       metadata: {
         cacheControl: "public, max-age=31536000",
-        metadata: {
-          firebaseStorageDownloadTokens: token,
-        },
+        metadata: { firebaseStorageDownloadTokens: token },
       },
     });
 
@@ -102,8 +98,8 @@ export async function uploadCardImages(
     }/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
 
     console.log(`[storage] uploaded ${path} (${buffer.length} bytes)`);
-    results.push({ url, path });
-  }
+    return { url, path };
+  });
 
-  return results;
+  return Promise.all(uploads);
 }

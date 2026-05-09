@@ -83,6 +83,8 @@ export default function ScanPage() {
   const [events, setEvents] = useState<EventConfig[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [eventState, setEventState] = useState<Record<string, EventStateValue>>({});
+  // Pre-upload optimization: kick off image upload in parallel with OCR
+  const uploadPromiseRef = useRef<Promise<string[]> | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
@@ -121,6 +123,23 @@ export default function ScanPage() {
     setStep("scanning");
     try {
       const imagesBase64 = images.map((i) => i.base64);
+
+      // Kick off image upload in parallel with OCR (saves ~1-2s on save step)
+      uploadPromiseRef.current = fetch("/api/upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imagesBase64, name: "card" }),
+      })
+        .then(async (r) => {
+          if (!r.ok) throw new Error("upload failed");
+          const j = (await r.json()) as { urls: string[] };
+          return j.urls ?? [];
+        })
+        .catch((e) => {
+          console.warn("[scan] pre-upload failed, will fallback:", e);
+          return [] as string[]; // empty → save will fall back to base64 upload
+        });
+
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -176,16 +195,27 @@ export default function ScanPage() {
     setStep("saving");
     setError(null);
     try {
-      const imagesBase64 = images.map((i) => i.base64);
+      // Wait for the pre-upload (started during OCR) to complete
+      const uploadedUrls = uploadPromiseRef.current
+        ? await uploadPromiseRef.current
+        : [];
+
+      const body: Record<string, unknown> = {
+        card,
+        eventId: withEvent ? selectedEventId : null,
+        eventResponse: withEvent ? buildEventResponse() : undefined,
+      };
+      // Use pre-uploaded URLs if available; fall back to base64 if pre-upload failed
+      if (uploadedUrls.length > 0) {
+        body.imageUrls = uploadedUrls;
+      } else {
+        body.imagesBase64 = images.map((i) => i.base64);
+      }
+
       const res = await fetch("/api/contacts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          card,
-          imagesBase64,
-          eventId: withEvent ? selectedEventId : null,
-          eventResponse: withEvent ? buildEventResponse() : undefined,
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -208,6 +238,7 @@ export default function ScanPage() {
     setError(null);
     setSelectedEventId("");
     setEventState({});
+    uploadPromiseRef.current = null;
     setStep("capture");
   };
 

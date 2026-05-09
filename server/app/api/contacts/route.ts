@@ -41,14 +41,17 @@ export async function POST(req: NextRequest) {
     eventId?: string | null;
     eventResponse?: EventResponse;
     imagesBase64?: string[];
+    imageUrls?: string[]; // pre-uploaded URLs (faster path)
   };
 
   const card = body.card ?? {};
 
-  // Upload images
+  // Use pre-uploaded URLs if provided, otherwise upload now
   let imageUrls: string[] = [];
   let imageError: string | undefined;
-  if (body.imagesBase64 && body.imagesBase64.length > 0) {
+  if (body.imageUrls && body.imageUrls.length > 0) {
+    imageUrls = body.imageUrls;
+  } else if (body.imagesBase64 && body.imagesBase64.length > 0) {
     try {
       const results = await uploadCardImages(
         body.imagesBase64,

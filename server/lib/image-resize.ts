@@ -1,3 +1,4 @@
+// Keep 1600px / 0.7 quality — OCR accuracy is critical
 export async function fileToResizedBase64(
   file: File,
   maxWidth = 1600,

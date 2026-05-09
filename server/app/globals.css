@@ -3,6 +3,8 @@
  * Copyright (c) 2026 Arnon Arpaket. All rights reserved.
  */
 
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -44,9 +46,9 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
     font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
-      "Segoe UI", "Inter", "Sukhumvit Set", "Noto Sans Thai",
-      Roboto, sans-serif;
+    font-family: "IBM Plex Sans Thai", "Plus Jakarta Sans",
+      -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI",
+      "Inter", "Sukhumvit Set", "Noto Sans Thai", Roboto, sans-serif;
   }
   *:focus-visible {
     outline: 2px solid hsl(var(--ring));
@@ -160,4 +162,29 @@
   /* Hide scrollbar */
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Aurora login keyframes */
+  @keyframes aurora-scan {
+    0% { top: 0; }
+    50% { top: calc(100% - 3px); }
+    100% { top: 0; }
+  }
+  @keyframes aurora-float {
+    0%, 100% { transform: translateY(0) rotate(2deg); }
+    50% { transform: translateY(-6px) rotate(2deg); }
+  }
+  .aurora-scan-line {
+    animation: aurora-scan 2.6s ease-in-out infinite;
+  }
+  .aurora-float-card {
+    animation: aurora-float 5s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .aurora-scan-line,
+    .aurora-float-card,
+    .bg-blob {
+      animation: none !important;
+    }
+  }
 }
+

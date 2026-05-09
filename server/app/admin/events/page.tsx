@@ -15,8 +15,11 @@ import {
   ChevronDown,
   Save,
   Calendar,
+  Copy,
+  Sparkles,
 } from "lucide-react";
 import type { EventField, EventRow } from "@/lib/supabase/types";
+import { EVENT_TEMPLATES, type EventTemplate } from "@/lib/event-templates";
 
 type FieldType = "text" | "textarea" | "multiselect";
 
@@ -63,6 +66,7 @@ export default function AdminEventsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<EventDraft | null>(null);
   const [isNew, setIsNew] = useState(false);
+  const [pickingTemplate, setPickingTemplate] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,7 +91,23 @@ export default function AdminEventsPage() {
   }, [load]);
 
   const onCreate = () => {
-    setEditing(emptyDraft());
+    setPickingTemplate(true);
+  };
+
+  const onPickTemplate = (template: EventTemplate) => {
+    setPickingTemplate(false);
+    const draft = emptyDraft();
+    draft.fields = template.fields.map((f) => ({ ...f })) as FieldDraft[];
+    setEditing(draft);
+    setIsNew(true);
+  };
+
+  const onDuplicateEvent = (ev: EventRow) => {
+    setPickingTemplate(false);
+    const draft = emptyDraft();
+    draft.fields = ((ev.fields ?? []) as FieldDraft[]).map((f) => ({ ...f }));
+    draft.name = `${ev.name} (Copy)`;
+    setEditing(draft);
     setIsNew(true);
   };
 
@@ -218,6 +238,15 @@ export default function AdminEventsPage() {
         ))
       )}
 
+      {pickingTemplate && (
+        <TemplatePicker
+          existingEvents={events}
+          onPickTemplate={onPickTemplate}
+          onDuplicate={onDuplicateEvent}
+          onClose={() => setPickingTemplate(false)}
+        />
+      )}
+
       {editing && (
         <EventEditor
           event={editing}
@@ -229,6 +258,107 @@ export default function AdminEventsPage() {
           }}
         />
       )}
+    </div>
+  );
+}
+
+function TemplatePicker({
+  existingEvents,
+  onPickTemplate,
+  onDuplicate,
+  onClose,
+}: {
+  existingEvents: EventRow[];
+  onPickTemplate: (t: EventTemplate) => void;
+  onDuplicate: (ev: EventRow) => void;
+  onClose: () => void;
+}) {
+  const usable = existingEvents.filter((e) => !e.archived_at);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+      <div className="bg-background w-full sm:max-w-4xl sm:rounded-xl shadow-xl flex flex-col max-h-[100dvh] sm:max-h-[90vh]">
+        <div className="border-b px-5 py-3 flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              เลือก Template
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              เริ่มต้นด้วย field สำเร็จรูป แล้วปรับให้เข้ากับงานของคุณ
+            </p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          <section>
+            <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
+              เทมเพลตสำเร็จรูป
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {EVENT_TEMPLATES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => onPickTemplate(t)}
+                  className="text-left p-4 rounded-xl border-2 border-transparent hover:border-primary hover:shadow-md transition-all bg-card group"
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`text-2xl rounded-lg w-12 h-12 flex items-center justify-center shrink-0 ${t.color}`}
+                    >
+                      {t.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm mb-1 group-hover:text-primary transition-colors">
+                        {t.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground line-clamp-2">
+                        {t.description}
+                      </div>
+                      <div className="text-xs text-muted-foreground/70 mt-2">
+                        {t.fields.length === 0
+                          ? "ไม่มี field เริ่มต้น"
+                          : `${t.fields.length} fields`}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {usable.length > 0 && (
+            <section>
+              <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wider flex items-center gap-2">
+                <Copy className="h-3 w-3" />
+                หรือ คัดลอกจาก Event ที่มีอยู่
+              </h3>
+              <div className="space-y-2">
+                {usable.map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => onDuplicate(e)}
+                    className="w-full text-left p-3 rounded-lg border hover:border-primary hover:bg-muted/50 transition-all flex items-center gap-3"
+                  >
+                    <Copy className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">{e.name}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {(e.fields ?? []).length} fields
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

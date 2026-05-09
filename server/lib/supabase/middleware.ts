@@ -37,7 +37,15 @@ export async function updateSession(request: NextRequest) {
     path === "/favicon.ico" ||
     path.startsWith("/_next");
 
+  const isApiPath = path.startsWith("/api/");
+
   if (!user && !isPublicPath) {
+    if (isApiPath) {
+      return new NextResponse(JSON.stringify({ error: "unauthenticated" }), {
+        status: 401,
+        headers: { "content-type": "application/json" },
+      });
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     if (path !== "/") url.searchParams.set("next", path);

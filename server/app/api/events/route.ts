@@ -41,6 +41,13 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
+  // Get current user's company (admin's company OR super_admin can pass company_id)
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("role, company_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
   const body = (await req.json()) as {
     slug?: string;
     name?: string;
@@ -48,6 +55,7 @@ export async function POST(req: NextRequest) {
     event_date?: string;
     fields?: EventField[];
     active?: boolean;
+    company_id?: string;
   };
 
   if (!body.slug || !body.name) {
@@ -55,6 +63,26 @@ export async function POST(req: NextRequest) {
       { error: "slug and name are required" },
       { status: 400 }
     );
+  }
+
+  // Resolve company_id: super_admin must specify; admin auto-uses own
+  let companyId: string;
+  if (me?.role === "super_admin") {
+    if (!body.company_id)
+      return NextResponse.json(
+        { error: "super_admin must specify company_id" },
+        { status: 400 }
+      );
+    companyId = body.company_id;
+  } else if (me?.role === "admin") {
+    if (!me.company_id)
+      return NextResponse.json(
+        { error: "admin has no company assigned" },
+        { status: 400 }
+      );
+    companyId = me.company_id;
+  } else {
+    return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
   const { data, error } = await supabase
@@ -67,6 +95,7 @@ export async function POST(req: NextRequest) {
       fields: body.fields ?? [],
       active: body.active ?? true,
       created_by: user.id,
+      company_id: companyId,
     })
     .select()
     .maybeSingle();

@@ -23,5 +23,7 @@ export default async function RootPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  redirect(profile?.role === "admin" ? "/dashboard" : "/scan");
+  const isAdmin =
+    profile && (profile.role === "admin" || profile.role === "super_admin");
+  redirect(isAdmin ? "/dashboard" : "/scan");
 }

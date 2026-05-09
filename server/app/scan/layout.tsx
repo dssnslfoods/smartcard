@@ -23,7 +23,7 @@ export default async function ScanLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, email, display_name, role, created_at")
+    .select("id, email, display_name, role, company_id, created_at")
     .eq("id", user.id)
     .maybeSingle();
 

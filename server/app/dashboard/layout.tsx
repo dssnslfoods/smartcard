@@ -23,11 +23,12 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, email, display_name, role, created_at")
+    .select("id, email, display_name, role, company_id, created_at")
     .eq("id", user.id)
     .maybeSingle();
 
-  if (!profile || profile.role !== "admin") redirect("/scan");
+  if (!profile || (profile.role !== "admin" && profile.role !== "super_admin"))
+    redirect("/scan");
 
   return <AppShell profile={profile}>{children}</AppShell>;
 }

@@ -48,6 +48,19 @@ export async function POST(req: NextRequest) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
 
+  // Get the user's company (required for tenant isolation)
+  const { data: me } = await supabase
+    .from("profiles")
+    .select("role, company_id")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!me?.company_id && me?.role !== "super_admin") {
+    return NextResponse.json(
+      { error: "Your account is not assigned to any company. Contact admin." },
+      { status: 400 }
+    );
+  }
+
   const body = (await req.json()) as {
     card?: CardData;
     eventId?: string | null;
@@ -77,30 +90,33 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Step 2: Find existing contact (by email or phone)
+  // Step 2: Find existing contact (by email or phone) — within own company
+  // (RLS already restricts to current company; this is explicit for safety)
   let contactId: string | null = null;
   let isNewContact = false;
 
   const emailKey = (card.email ?? "").trim().toLowerCase();
   const phoneKey = normalizePhone(card.phone);
+  const companyId = me?.company_id ?? null;
 
-  if (emailKey) {
+  if (emailKey && companyId) {
     const { data: existing } = await supabase
       .from("contacts")
       .select("id")
       .ilike("email", emailKey)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .limit(1)
       .maybeSingle();
     if (existing) contactId = existing.id;
   }
 
-  if (!contactId && phoneKey && phoneKey.length >= 6) {
-    // Phone match — fetch all contacts and compare normalized digits
+  if (!contactId && phoneKey && phoneKey.length >= 6 && companyId) {
     const { data: candidates } = await supabase
       .from("contacts")
       .select("id, phone")
       .not("phone", "is", null)
+      .eq("company_id", companyId)
       .is("deleted_at", null)
       .limit(50);
     const match = (candidates ?? []).find(
@@ -121,6 +137,12 @@ export async function POST(req: NextRequest) {
     if (imageUrls.length > 0) updates.image_urls = imageUrls;
     await supabase.from("contacts").update(updates).eq("id", contactId);
   } else {
+    if (!companyId) {
+      return NextResponse.json(
+        { error: "Cannot create contact without a company" },
+        { status: 400 }
+      );
+    }
     const { data: newContact, error: createErr } = await supabase
       .from("contacts")
       .insert({
@@ -133,6 +155,7 @@ export async function POST(req: NextRequest) {
         address: card.address ?? null,
         image_urls: imageUrls,
         first_scanned_by: user.id,
+        company_id: companyId,
       })
       .select("id")
       .maybeSingle();

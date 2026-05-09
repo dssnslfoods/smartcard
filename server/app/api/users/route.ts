@@ -1,9 +1,6 @@
 /*
  * SmartCard — Business Card Scanner Application
  * Copyright (c) 2026 Arnon Arpaket. All rights reserved.
- *
- * This file is part of SmartCard, a proprietary software product.
- * Unauthorized copying, modification, distribution, or use is prohibited.
  */
 
 import { NextResponse } from "next/server";
@@ -20,20 +17,33 @@ export async function GET() {
 
   const { data: me } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, company_id")
     .eq("id", user.id)
     .maybeSingle();
-  if (me?.role !== "admin")
+  if (!me || (me.role !== "admin" && me.role !== "super_admin"))
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const service = createServiceClient();
-  const { data, error } = await service
+  let query = service
     .from("profiles")
-    .select("id, email, display_name, role, created_at")
+    .select("id, email, display_name, role, company_id, created_at")
     .order("created_at", { ascending: false });
 
+  // Admin sees only own company; super_admin sees all
+  if (me.role === "admin" && me.company_id) {
+    query = query.eq("company_id", me.company_id);
+  }
+
+  const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ users: data ?? [] });
+
+  // Also fetch companies for the role context
+  const { data: companies } = await service
+    .from("companies")
+    .select("id, name, slug")
+    .is("archived_at", null);
+
+  return NextResponse.json({ users: data ?? [], companies: companies ?? [] });
 }
 
 export async function POST(req: Request) {
@@ -45,17 +55,18 @@ export async function POST(req: Request) {
 
   const { data: me } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, company_id")
     .eq("id", user.id)
     .maybeSingle();
-  if (me?.role !== "admin")
+  if (!me || (me.role !== "admin" && me.role !== "super_admin"))
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
   const body = (await req.json()) as {
     email?: string;
     password?: string;
     display_name?: string;
-    role?: "user" | "admin";
+    role?: "user" | "admin" | "super_admin";
+    company_id?: string | null;
   };
 
   if (!body.email || !body.password) {
@@ -65,14 +76,51 @@ export async function POST(req: Request) {
     );
   }
 
+  // Decide company assignment + role guards
+  let targetCompanyId: string | null;
+  let targetRole = body.role ?? "user";
+
+  if (me.role === "super_admin") {
+    // Super admin can pick anything
+    if (targetRole === "super_admin") {
+      targetCompanyId = null;
+    } else {
+      targetCompanyId = body.company_id ?? null;
+      if (!targetCompanyId) {
+        return NextResponse.json(
+          { error: "company_id is required for non-super_admin users" },
+          { status: 400 }
+        );
+      }
+    }
+  } else {
+    // Regular admin can only create users in their own company; cannot create super_admin
+    if (targetRole === "super_admin") {
+      return NextResponse.json(
+        { error: "Only super_admin can create super_admin users" },
+        { status: 403 }
+      );
+    }
+    targetCompanyId = me.company_id;
+    if (!targetCompanyId) {
+      return NextResponse.json(
+        { error: "Your account has no company" },
+        { status: 400 }
+      );
+    }
+  }
+
   const service = createServiceClient();
 
-  // Create the auth user
   const { data: authData, error: authErr } = await service.auth.admin.createUser({
     email: body.email,
     password: body.password,
     email_confirm: true,
-    user_metadata: { name: body.display_name ?? body.email },
+    user_metadata: {
+      name: body.display_name ?? body.email,
+      role: targetRole,
+      ...(targetCompanyId ? { company_id: targetCompanyId } : {}),
+    },
   });
   if (authErr || !authData.user)
     return NextResponse.json(
@@ -80,12 +128,13 @@ export async function POST(req: Request) {
       { status: 400 }
     );
 
-  // Update profile (trigger already inserted base row)
+  // Profile already created by trigger; ensure correct values
   const { error: profErr } = await service
     .from("profiles")
     .update({
       display_name: body.display_name ?? body.email,
-      role: body.role ?? "user",
+      role: targetRole,
+      company_id: targetCompanyId,
     })
     .eq("id", authData.user.id);
   if (profErr)

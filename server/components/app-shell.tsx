@@ -20,6 +20,7 @@ import {
   ContactRound,
   Menu,
   X,
+  Building2,
 } from "lucide-react";
 import type { Profile } from "@/lib/supabase/types";
 
@@ -28,6 +29,7 @@ type Item = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
+  superAdminOnly?: boolean;
 };
 
 const NAV: Item[] = [
@@ -35,6 +37,7 @@ const NAV: Item[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
   { href: "/admin/events", label: "Events", icon: CalendarRange, adminOnly: true },
   { href: "/admin/users", label: "Users", icon: Users, adminOnly: true },
+  { href: "/admin/companies", label: "Companies", icon: Building2, superAdminOnly: true },
 ];
 
 export function AppShell({
@@ -48,7 +51,11 @@ export function AppShell({
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const items = NAV.filter((i) => !i.adminOnly || profile.role === "admin");
+  const items = NAV.filter((i) => {
+    if (i.superAdminOnly) return profile.role === "super_admin";
+    if (i.adminOnly) return profile.role === "admin" || profile.role === "super_admin";
+    return true;
+  });
 
   useEffect(() => setMenuOpen(false), [pathname]);
 

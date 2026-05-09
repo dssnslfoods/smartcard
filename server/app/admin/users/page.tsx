@@ -22,14 +22,15 @@ import {
   ShieldCheck,
   User,
 } from "lucide-react";
-import type { Profile } from "@/lib/supabase/types";
+import type { Profile, Company } from "@/lib/supabase/types";
 
 type Draft = {
   id?: string;
   email: string;
   display_name: string;
   password: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "super_admin";
+  company_id: string | null;
 };
 
 const empty = (): Draft => ({
@@ -37,10 +38,15 @@ const empty = (): Draft => ({
   display_name: "",
   password: "",
   role: "user",
+  company_id: null,
 });
+
+type Me = { role: string; company_id: string | null };
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<Profile[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Draft | null>(null);
@@ -50,13 +56,22 @@ export default function AdminUsersPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/users", { cache: "no-store" });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `HTTP ${res.status}`);
+      const [usersRes, profileRes] = await Promise.all([
+        fetch("/api/users", { cache: "no-store" }),
+        fetch("/api/profile", { cache: "no-store" }),
+      ]);
+      if (!usersRes.ok) {
+        const j = await usersRes.json().catch(() => ({}));
+        throw new Error(j.error || `HTTP ${usersRes.status}`);
       }
-      const data = (await res.json()) as { users: Profile[] };
+      const data = (await usersRes.json()) as {
+        users: Profile[];
+        companies: Company[];
+      };
       setUsers(data.users ?? []);
+      setCompanies(data.companies ?? []);
+      const profileData = await profileRes.json();
+      setMe(profileData.profile ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -80,6 +95,7 @@ export default function AdminUsersPage() {
       display_name: u.display_name ?? "",
       password: "",
       role: u.role,
+      company_id: u.company_id,
     });
     setIsNew(false);
   };
@@ -191,6 +207,8 @@ export default function AdminUsersPage() {
         <UserEditor
           user={editing}
           isNew={isNew}
+          isSuperAdmin={me?.role === "super_admin"}
+          companies={companies}
           onClose={() => setEditing(null)}
           onSaved={async () => {
             setEditing(null);
@@ -205,11 +223,15 @@ export default function AdminUsersPage() {
 function UserEditor({
   user,
   isNew,
+  isSuperAdmin,
+  companies,
   onClose,
   onSaved,
 }: {
   user: Draft;
   isNew: boolean;
+  isSuperAdmin: boolean;
+  companies: Company[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -230,6 +252,15 @@ function UserEditor({
       setErr("รหัสผ่านต้อง 6 ตัวอักษรขึ้นไป");
       return;
     }
+    if (
+      isSuperAdmin &&
+      isNew &&
+      draft.role !== "super_admin" &&
+      !draft.company_id
+    ) {
+      setErr("กรุณาเลือกบริษัทสังกัด");
+      return;
+    }
     setSaving(true);
     setErr(null);
     try {
@@ -242,6 +273,8 @@ function UserEditor({
             password: draft.password,
             display_name: draft.display_name || null,
             role: draft.role,
+            company_id:
+              draft.role === "super_admin" ? null : draft.company_id,
           }),
         });
         if (!res.ok) {
@@ -342,15 +375,43 @@ function UserEditor({
               onChange={(e) =>
                 setDraft((d) => ({
                   ...d,
-                  role: e.target.value as "user" | "admin",
+                  role: e.target.value as "user" | "admin" | "super_admin",
                 }))
               }
               className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="user">User (สแกนนามบัตรเท่านั้น)</option>
-              <option value="admin">Admin (จัดการทุกอย่าง)</option>
+              <option value="admin">Admin (จัดการบริษัทตัวเอง)</option>
+              {isSuperAdmin && (
+                <option value="super_admin">Super Admin (จัดการทั้งระบบ)</option>
+              )}
             </select>
           </div>
+
+          {isSuperAdmin && draft.role !== "super_admin" && (
+            <div>
+              <Label className="mb-1.5 block">
+                บริษัทสังกัด <span className="text-destructive">*</span>
+              </Label>
+              <select
+                value={draft.company_id ?? ""}
+                onChange={(e) =>
+                  setDraft((d) => ({
+                    ...d,
+                    company_id: e.target.value || null,
+                  }))
+                }
+                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">— เลือกบริษัท —</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="border-t px-5 py-3 flex gap-2 justify-end">

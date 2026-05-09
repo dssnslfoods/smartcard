@@ -68,9 +68,18 @@ export async function updateSession(request: NextRequest) {
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!profile || profile.role !== "admin") {
+    const isAdmin =
+      profile && (profile.role === "admin" || profile.role === "super_admin");
+    if (!isAdmin) {
       const url = request.nextUrl.clone();
       url.pathname = "/scan";
+      return NextResponse.redirect(url);
+    }
+
+    // /admin/companies is super_admin only
+    if (path.startsWith("/admin/companies") && profile.role !== "super_admin") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
       return NextResponse.redirect(url);
     }
   }
@@ -83,8 +92,10 @@ export async function updateSession(request: NextRequest) {
       .eq("id", user.id)
       .maybeSingle();
 
+    const isAdmin =
+      profile && (profile.role === "admin" || profile.role === "super_admin");
     const url = request.nextUrl.clone();
-    url.pathname = profile?.role === "admin" ? "/dashboard" : "/scan";
+    url.pathname = isAdmin ? "/dashboard" : "/scan";
     return NextResponse.redirect(url);
   }
 
@@ -96,8 +107,10 @@ export async function updateSession(request: NextRequest) {
       .eq("id", user.id)
       .maybeSingle();
 
+    const isAdmin =
+      profile && (profile.role === "admin" || profile.role === "super_admin");
     const url = request.nextUrl.clone();
-    url.pathname = profile?.role === "admin" ? "/dashboard" : "/scan";
+    url.pathname = isAdmin ? "/dashboard" : "/scan";
     return NextResponse.redirect(url);
   }
 

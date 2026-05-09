@@ -228,13 +228,13 @@ function LoginAurora() {
                 letterSpacing: ".18em",
               }}
             >
-              SCANNED · 2 มิ.ย.
+              SCANNED · 2 JUN
             </div>
             <div
               className="absolute text-white font-semibold"
               style={{ left: 24, bottom: 24, fontSize: 14 }}
             >
-              Sarawut · CTO, Lumen Co.
+              Michael Lee · CTO, Lumen Co.
             </div>
           </div>
 
@@ -331,7 +331,7 @@ function LoginAurora() {
                   className="font-bold text-slate-900"
                   style={{ fontSize: 16 }}
                 >
-                  คุณ ปริญญา วงศ์ภักดี
+                  James Anderson
                 </div>
                 <div
                   className="text-slate-500 mt-0.5"
@@ -346,9 +346,9 @@ function LoginAurora() {
               style={{ fontSize: 11.5 }}
             >
               {[
-                { icon: "@", text: "parinya@aurora.co.th" },
-                { icon: "☎", text: "+66 81 234 5678" },
-                { icon: "⌂", text: "www.aurora.co.th · BKK" },
+                { icon: "@", text: "james.anderson@aurora.co" },
+                { icon: "☎", text: "+1 415 555 0192" },
+                { icon: "⌂", text: "www.aurora.co · New York" },
               ].map((row, i) => (
                 <div key={i} className="flex gap-2 items-center">
                   <div

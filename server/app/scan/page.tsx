@@ -274,9 +274,14 @@ export default function ScanPage() {
       {step === "capture" && (
         <>
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">สแกนนามบัตร</h1>
-            <span className="text-sm text-muted-foreground">
-              {images.length}/{MAX_IMAGES} รูป
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">สแกนนามบัตร</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                ถ่าย/อัปโหลดได้สูงสุด {MAX_IMAGES} รูป (หน้า + หลัง)
+              </p>
+            </div>
+            <span className="text-sm font-medium text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
+              {images.length}/{MAX_IMAGES}
             </span>
           </div>
 

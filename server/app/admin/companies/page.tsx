@@ -159,7 +159,7 @@ export default function AdminCompaniesPage() {
         companies.map((c) => (
           <Card
             key={c.id}
-            className={c.archived_at ? "opacity-60" : undefined}
+            className={`card-hover shadow-soft ${c.archived_at ? "opacity-60" : ""}`}
           >
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-lg bg-primary/10 p-2 text-primary shrink-0">

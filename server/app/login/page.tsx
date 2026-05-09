@@ -51,15 +51,47 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center p-4 bg-gradient-to-br from-slate-50 to-blue-50">
-      <Card className="w-full max-w-md shadow-lg">
+    <div className="relative min-h-[100dvh] flex items-center justify-center p-4 overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50">
+      {/* Decorative animated blobs */}
+      <div
+        className="bg-blob bg-blue-300"
+        style={{ width: 380, height: 380, top: -120, left: -100 }}
+      />
+      <div
+        className="bg-blob bg-indigo-300"
+        style={{
+          width: 320,
+          height: 320,
+          bottom: -100,
+          right: -80,
+          animationDelay: "-6s",
+        }}
+      />
+      <div
+        className="bg-blob bg-violet-200"
+        style={{
+          width: 260,
+          height: 260,
+          top: "40%",
+          right: "15%",
+          animationDelay: "-12s",
+          opacity: 0.35,
+        }}
+      />
+
+      <Card className="relative w-full max-w-md shadow-soft-lg border-white/40 backdrop-blur-md bg-white/85 animate-fade-up">
         <CardContent className="p-8">
           <div className="flex flex-col items-center mb-6">
-            <div className="rounded-2xl bg-primary/10 p-4 mb-3">
-              <ContactRound className="h-8 w-8 text-primary" />
+            <div className="relative">
+              <div className="absolute inset-0 rounded-2xl bg-primary/30 blur-md" />
+              <div className="relative rounded-2xl bg-gradient-to-br from-primary to-indigo-500 p-4 mb-3 shadow-glow-primary">
+                <ContactRound className="h-8 w-8 text-white" />
+              </div>
             </div>
-            <h1 className="text-2xl font-bold">SmartCard</h1>
-            <p className="text-sm text-muted-foreground mt-1">
+            <h1 className="text-3xl font-bold tracking-tight text-gradient">
+              SmartCard
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1.5">
               เข้าสู่ระบบเพื่อเริ่มใช้งาน
             </p>
           </div>
@@ -123,7 +155,7 @@ function LoginForm() {
         </CardContent>
       </Card>
 
-      <p className="mt-6 text-center text-xs text-muted-foreground/80">
+      <p className="relative mt-6 text-center text-xs text-muted-foreground/80">
         © 2026 <span className="font-medium">Arnon Arpaket</span> — All rights reserved
       </p>
     </div>

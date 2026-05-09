@@ -205,7 +205,7 @@ export default function AdminEventsPage() {
         events.map((ev) => (
           <Card
             key={ev.id}
-            className={ev.archived_at ? "opacity-60" : undefined}
+            className={`card-hover shadow-soft ${ev.archived_at ? "opacity-60" : ""}`}
           >
             <CardContent className="p-4 flex items-center gap-3">
               <div className="flex-1 min-w-0">

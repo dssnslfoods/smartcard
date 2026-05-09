@@ -72,13 +72,18 @@ export function AppShell({
   return (
     <div className="min-h-[100dvh] bg-muted/30 flex flex-col">
       {/* Top bar */}
-      <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
+      <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
         <div className="container mx-auto max-w-7xl px-4 h-14 flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2 mr-2">
-            <div className="rounded-lg bg-primary/10 p-1.5">
-              <ContactRound className="h-5 w-5 text-primary" />
+          <Link href="/" className="flex items-center gap-2 mr-2 group">
+            <div className="relative">
+              <div className="absolute inset-0 rounded-lg bg-primary/40 blur-sm opacity-0 group-hover:opacity-60 transition-opacity" />
+              <div className="relative rounded-lg bg-gradient-to-br from-primary to-indigo-500 p-1.5 shadow-sm">
+                <ContactRound className="h-5 w-5 text-white" />
+              </div>
             </div>
-            <span className="font-bold tracking-tight">SmartCard</span>
+            <span className="font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+              SmartCard
+            </span>
           </Link>
 
           {/* Desktop nav */}
@@ -177,7 +182,7 @@ export function AppShell({
       </header>
 
       {/* Content */}
-      <main className="flex-1 pb-20 md:pb-6">{children}</main>
+      <main className="flex-1 pb-20 md:pb-6 animate-fade-up">{children}</main>
 
       {/* Footer copyright (desktop only — mobile has bottom nav) */}
       <footer className="hidden md:block border-t bg-background/50 mt-auto">

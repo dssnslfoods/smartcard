@@ -168,8 +168,8 @@ export default function DashboardPage() {
     <div className="container mx-auto max-w-7xl px-4 py-6 space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">Dashboard</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
             ภาพรวมและรายงานนามบัตร
           </p>
         </div>
@@ -512,40 +512,50 @@ function StatsCards({
       label: "นามบัตรทั้งหมด",
       value: total.toLocaleString("th-TH"),
       icon: ContactRound,
-      tint: "bg-blue-500/10 text-blue-600",
+      gradient: "from-blue-500/15 to-blue-500/5",
+      iconTint: "bg-blue-500 text-white",
     },
     {
       label: "เพิ่มวันนี้",
       value: todayCount.toLocaleString("th-TH"),
       icon: Calendar,
-      tint: "bg-emerald-500/10 text-emerald-600",
+      gradient: "from-emerald-500/15 to-emerald-500/5",
+      iconTint: "bg-emerald-500 text-white",
     },
     {
       label: "Event ที่ active",
       value: activeEvents.toLocaleString("th-TH"),
       icon: CalendarRange,
-      tint: "bg-violet-500/10 text-violet-600",
+      gradient: "from-violet-500/15 to-violet-500/5",
+      iconTint: "bg-violet-500 text-white",
     },
     {
       label: "ผู้สแกน",
-      value: new Set(contacts.map((c) => c.scanned_by).filter(Boolean)).size.toLocaleString("th-TH"),
+      value: new Set(contacts.map((c) => c.scanned_by).filter(Boolean))
+        .size.toLocaleString("th-TH"),
       icon: Users,
-      tint: "bg-amber-500/10 text-amber-600",
+      gradient: "from-amber-500/15 to-amber-500/5",
+      iconTint: "bg-amber-500 text-white",
     },
   ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
       {items.map((it) => (
-        <Card key={it.label}>
+        <Card
+          key={it.label}
+          className={`relative overflow-hidden card-hover bg-gradient-to-br ${it.gradient} border-0 shadow-soft`}
+        >
           <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">{it.label}</p>
-              <p className="text-2xl font-bold tracking-tight mt-0.5">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground font-medium">
+                {it.label}
+              </p>
+              <p className="text-2xl font-bold tracking-tight mt-0.5 truncate">
                 {it.value}
               </p>
             </div>
-            <div className={`rounded-lg p-2 ${it.tint}`}>
+            <div className={`rounded-xl p-2.5 shadow-sm ${it.iconTint}`}>
               <it.icon className="h-5 w-5" />
             </div>
           </CardContent>

@@ -147,7 +147,7 @@ export default function AdminUsersPage() {
         </div>
       ) : (
         users.map((u) => (
-          <Card key={u.id}>
+          <Card key={u.id} className="card-hover shadow-soft">
             <CardContent className="p-4 flex items-center gap-3">
               <div
                 className={`rounded-full p-2 ${

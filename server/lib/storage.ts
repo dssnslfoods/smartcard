@@ -111,3 +111,39 @@ export async function uploadCardImages(
 
   return Promise.all(uploads);
 }
+
+/**
+ * Extract the storage path from a Firebase Storage download URL.
+ * URL format: https://firebasestorage.googleapis.com/v0/b/<bucket>/o/<encoded-path>?alt=media&token=...
+ */
+function urlToStoragePath(url: string): string | null {
+  const m = url.match(/\/o\/([^?]+)/);
+  if (!m) return null;
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteCardImages(urls: string[]): Promise<void> {
+  if (!urls || urls.length === 0) return;
+  ensureApp();
+  const bucket = getStorage().bucket();
+
+  const deletes = urls.map(async (url) => {
+    const path = urlToStoragePath(url);
+    if (!path) {
+      console.warn(`[storage] cannot parse path: ${url.slice(0, 80)}`);
+      return;
+    }
+    try {
+      await bucket.file(path).delete({ ignoreNotFound: true });
+      console.log(`[storage] deleted ${path}`);
+    } catch (e) {
+      console.warn(`[storage] delete failed for ${path}:`, e);
+    }
+  });
+  await Promise.all(deletes);
+}
+

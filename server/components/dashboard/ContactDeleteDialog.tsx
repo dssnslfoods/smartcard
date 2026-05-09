@@ -77,7 +77,7 @@ export function ContactDeleteDialog({
             <br />
             • ถ้าเป็น scan สุดท้ายของลูกค้า → ลบนามบัตรหลักด้วย
             <br />
-            • รูปใน Storage ยังคงอยู่ (ลบเองได้ถ้าต้องการ)
+            • รูปนามบัตรใน Cloud Storage จะถูกลบไปด้วย
           </p>
 
           {err && (

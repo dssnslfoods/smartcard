@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { deleteCardImages } from "@/lib/storage";
 import type { EventResponse } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
@@ -115,14 +116,14 @@ export async function DELETE(
   const { id } = await params;
   const supabase = await createClient();
 
-  // 1. Get contact_id from this attendance
+  // 1. Get attendance details (need image_urls + contact_id)
   const { data: att } = await supabase
     .from("attendances")
-    .select("contact_id")
+    .select("contact_id, image_urls")
     .eq("id", id)
     .maybeSingle();
 
-  // 2. Hard delete the attendance
+  // 2. Hard delete the attendance row
   const { error: delErr } = await supabase
     .from("attendances")
     .delete()
@@ -130,7 +131,15 @@ export async function DELETE(
   if (delErr)
     return NextResponse.json({ error: delErr.message }, { status: 400 });
 
-  // 3. If this was the last attendance for the contact, delete the contact too
+  // 3. Delete images of this attendance from Storage
+  const attImages = att?.image_urls ?? [];
+  if (attImages.length > 0) {
+    await deleteCardImages(attImages).catch((e) =>
+      console.error("[contacts/delete] storage cleanup failed:", e)
+    );
+  }
+
+  // 4. If no more attendances → delete contact + remaining contact images
   if (att?.contact_id) {
     const { count } = await supabase
       .from("attendances")
@@ -138,7 +147,25 @@ export async function DELETE(
       .eq("contact_id", att.contact_id);
 
     if ((count ?? 0) === 0) {
+      const { data: contact } = await supabase
+        .from("contacts")
+        .select("image_urls")
+        .eq("id", att.contact_id)
+        .maybeSingle();
+
       await supabase.from("contacts").delete().eq("id", att.contact_id);
+
+      // Cleanup any contact-level images that weren't already deleted with the attendance
+      if (contact?.image_urls && contact.image_urls.length > 0) {
+        const remaining = contact.image_urls.filter(
+          (u: string) => !attImages.includes(u)
+        );
+        if (remaining.length > 0) {
+          await deleteCardImages(remaining).catch((e) =>
+            console.error("[contacts/delete] contact storage cleanup failed:", e)
+          );
+        }
+      }
     }
   }
 

@@ -1,3 +1,11 @@
+/*
+ * SmartCard — Business Card Scanner Application
+ * Copyright (c) 2026 Arnon Arpaket. All rights reserved.
+ *
+ * This file is part of SmartCard, a proprietary software product.
+ * Unauthorized copying, modification, distribution, or use is prohibited.
+ */
+
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 

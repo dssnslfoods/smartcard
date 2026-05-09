@@ -1,4 +1,12 @@
 "use client";
+/*
+ * SmartCard — Business Card Scanner Application
+ * Copyright (c) 2026 Arnon Arpaket. All rights reserved.
+ *
+ * This file is part of SmartCard, a proprietary software product.
+ * Unauthorized copying, modification, distribution, or use is prohibited.
+ */
+
 import { Suspense, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -114,6 +122,10 @@ function LoginForm() {
           </p>
         </CardContent>
       </Card>
+
+      <p className="mt-6 text-center text-xs text-muted-foreground/80">
+        © 2026 <span className="font-medium">Arnon Arpaket</span> — All rights reserved
+      </p>
     </div>
   );
 }

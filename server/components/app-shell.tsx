@@ -1,4 +1,12 @@
 "use client";
+/*
+ * SmartCard — Business Card Scanner Application
+ * Copyright (c) 2026 Arnon Arpaket. All rights reserved.
+ *
+ * This file is part of SmartCard, a proprietary software product.
+ * Unauthorized copying, modification, distribution, or use is prohibited.
+ */
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -163,6 +171,14 @@ export function AppShell({
 
       {/* Content */}
       <main className="flex-1 pb-20 md:pb-6">{children}</main>
+
+      {/* Footer copyright (desktop only — mobile has bottom nav) */}
+      <footer className="hidden md:block border-t bg-background/50 mt-auto">
+        <div className="container mx-auto max-w-7xl px-4 py-3 text-center text-xs text-muted-foreground">
+          SmartCard © 2026{" "}
+          <span className="font-medium">Arnon Arpaket</span>. All rights reserved.
+        </div>
+      </footer>
 
       {/* Mobile bottom nav */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 border-t bg-background/95 backdrop-blur">

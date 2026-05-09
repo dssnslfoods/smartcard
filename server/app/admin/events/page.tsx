@@ -60,6 +60,19 @@ const newField = (): FieldDraft => ({
   labelEn: "",
 });
 
+function autoSlug(name: string): string {
+  const slug = (name || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  if (slug.length >= 2) return slug;
+  // Fallback: random suffix when name contains no ASCII (e.g., Thai-only name)
+  return `event-${Date.now().toString(36)}`;
+}
+
 export default function AdminEventsPage() {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -403,10 +416,10 @@ function EventEditor({
     });
 
   const validate = (): string | null => {
-    if (!draft.slug.trim()) return "ใส่ slug ของ event";
-    if (!/^[a-z0-9-]+$/.test(draft.slug))
-      return "slug ใช้ได้เฉพาะ a-z 0-9 - เท่านั้น";
     if (!draft.name.trim()) return "ใส่ชื่อ event";
+    // Slug is optional — will be auto-generated if empty
+    if (draft.slug.trim() && !/^[a-z0-9-]+$/.test(draft.slug))
+      return "รหัสภายใน ใช้ได้เฉพาะ a-z 0-9 - เท่านั้น";
     const keys = new Set<string>();
     for (const f of draft.fields) {
       if (!f.key.trim())
@@ -466,8 +479,10 @@ function EventEditor({
         };
       });
 
+      const finalSlug = draft.slug.trim() || autoSlug(draft.name);
+
       const body = {
-        slug: draft.slug,
+        slug: finalSlug,
         name: draft.name,
         description: draft.description || null,
         event_date: draft.event_date || null,
@@ -519,30 +534,25 @@ function EventEditor({
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <Label className="mb-1.5 block">
-                  Slug <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  value={draft.slug}
-                  onChange={(e) => setMeta("slug", e.target.value)}
-                  placeholder="thaifex-2026"
-                  disabled={!isNew}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  a-z, 0-9, - เท่านั้น (ไม่แก้หลังสร้าง)
-                </p>
-              </div>
-              <div>
+              <div className="sm:col-span-2">
                 <Label className="mb-1.5 block">
                   ชื่อ Event <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   value={draft.name}
                   onChange={(e) => setMeta("name", e.target.value)}
-                  placeholder="Thaifex - Anuga ASIA 2026"
+                  placeholder="เช่น Thaifex - Anuga ASIA 2026"
                 />
+                {isNew && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    รหัสภายในจะถูกสร้างอัตโนมัติเป็น{" "}
+                    <code className="text-foreground bg-muted px-1 rounded">
+                      {draft.slug.trim() || autoSlug(draft.name)}
+                    </code>
+                  </p>
+                )}
               </div>
+
               <div>
                 <Label className="mb-1.5 block">วันที่จัดงาน</Label>
                 <Input
@@ -563,13 +573,28 @@ function EventEditor({
                 </label>
               </div>
               <div className="sm:col-span-2">
-                <Label className="mb-1.5 block">รายละเอียด (optional)</Label>
+                <Label className="mb-1.5 block">รายละเอียด (ไม่บังคับ)</Label>
                 <Textarea
                   value={draft.description}
                   onChange={(e) => setMeta("description", e.target.value)}
                   rows={2}
+                  placeholder="คำอธิบายสั้นๆ เกี่ยวกับ event"
                 />
               </div>
+
+              {/* Advanced: editable slug — only when editing existing */}
+              {!isNew && (
+                <div className="sm:col-span-2">
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">
+                    รหัสภายใน (ID)
+                  </Label>
+                  <Input
+                    value={draft.slug}
+                    disabled
+                    className="font-mono text-sm bg-muted"
+                  />
+                </div>
+              )}
             </div>
           </section>
 

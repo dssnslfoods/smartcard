@@ -43,6 +43,14 @@ import {
   YAxis,
 } from "recharts";
 import type { EventField, EventRow } from "@/lib/supabase/types";
+import {
+  ContactEditDialog,
+  type ContactEditTarget,
+} from "@/components/dashboard/ContactEditDialog";
+import {
+  ContactDeleteDialog,
+  type DeleteTarget,
+} from "@/components/dashboard/ContactDeleteDialog";
 
 type ContactRecord = {
   id: string;
@@ -56,6 +64,7 @@ type ContactRecord = {
   image_urls: string[];
   event_id: string | null;
   event_data: Record<string, string>;
+  notes?: string | null;
   scanned_by: string | null;
   created_at: string;
   events: { id: string; name: string; slug: string; event_date: string | null } | null;
@@ -81,6 +90,10 @@ export default function DashboardPage() {
     Record<string, string>
   >({});
   const [page, setPage] = useState(0);
+
+  // Edit/delete dialogs
+  const [editing, setEditing] = useState<ContactEditTarget | null>(null);
+  const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
 
   const loadEvents = useCallback(async () => {
     try {
@@ -343,7 +356,7 @@ export default function DashboardPage() {
                   <Th>ติดต่อ</Th>
                   <Th>Event</Th>
                   <Th>Scanner</Th>
-                  <Th className="text-right">รูป</Th>
+                  <Th className="text-right">จัดการ</Th>
                 </tr>
               </thead>
               <tbody>
@@ -429,24 +442,64 @@ export default function DashboardPage() {
                         {c.profiles?.display_name || c.profiles?.email || "—"}
                       </Td>
                       <Td className="text-right whitespace-nowrap">
-                        {c.image_urls.map((u, i) => (
+                        <div className="inline-flex items-center gap-0.5">
+                          {c.image_urls.map((u, i) => (
+                            <Button
+                              key={i}
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              asChild
+                              title={
+                                c.image_urls.length > 1
+                                  ? `รูปที่ ${i + 1}/${c.image_urls.length}`
+                                  : "ดูรูปนามบัตร"
+                              }
+                            >
+                              <a href={u} target="_blank" rel="noopener noreferrer">
+                                <ImageIcon className="h-4 w-4" />
+                              </a>
+                            </Button>
+                          ))}
                           <Button
-                            key={i}
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            asChild
-                            title={
-                              c.image_urls.length > 1
-                                ? `รูปที่ ${i + 1}/${c.image_urls.length}`
-                                : "ดูรูปนามบัตร"
+                            onClick={() =>
+                              setEditing({
+                                id: c.id,
+                                name: c.name,
+                                position: c.position,
+                                company: c.company,
+                                phone: c.phone,
+                                email: c.email,
+                                website: c.website,
+                                address: c.address,
+                                event_id: c.event_id,
+                                event_data: c.event_data ?? {},
+                                notes: c.notes ?? null,
+                              })
                             }
+                            title="แก้ไข"
                           >
-                            <a href={u} target="_blank" rel="noopener noreferrer">
-                              <ImageIcon className="h-4 w-4" />
-                            </a>
+                            <Pencil className="h-4 w-4" />
                           </Button>
-                        ))}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() =>
+                              setDeleting({
+                                id: c.id,
+                                name: c.name,
+                                company: c.company,
+                              })
+                            }
+                            title="ลบ"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </Td>
                     </tr>
                   ))
@@ -486,6 +539,24 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      <ContactEditDialog
+        contact={editing}
+        events={events}
+        onClose={() => setEditing(null)}
+        onSaved={() => {
+          setEditing(null);
+          loadContacts();
+        }}
+      />
+      <ContactDeleteDialog
+        target={deleting}
+        onClose={() => setDeleting(null)}
+        onDeleted={() => {
+          setDeleting(null);
+          loadContacts();
+        }}
+      />
     </div>
   );
 }

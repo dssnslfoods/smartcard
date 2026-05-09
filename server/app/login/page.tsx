@@ -51,7 +51,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="relative min-h-[100dvh] flex items-center justify-center p-4 overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50">
+    <div className="relative min-h-[100dvh] flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50">
       {/* Decorative animated blobs */}
       <div
         className="bg-blob bg-blue-300"
@@ -79,7 +79,8 @@ function LoginForm() {
         }}
       />
 
-      <Card className="relative w-full max-w-md shadow-soft-lg border-white/40 backdrop-blur-md bg-white/85 animate-fade-up">
+      <main className="flex-1 flex items-center justify-center p-4">
+        <Card className="relative w-full max-w-md shadow-soft-lg border-white/40 backdrop-blur-md bg-white/85 animate-fade-up">
         <CardContent className="p-8">
           <div className="flex flex-col items-center mb-6">
             <div className="relative">
@@ -153,11 +154,12 @@ function LoginForm() {
             ติดต่อผู้ดูแลระบบหากยังไม่มีบัญชี
           </p>
         </CardContent>
-      </Card>
+        </Card>
+      </main>
 
-      <p className="relative mt-6 text-center text-xs text-muted-foreground/80">
+      <footer className="relative px-4 pb-4 pt-2 text-center text-xs text-muted-foreground/80">
         © 2026 <span className="font-medium">Arnon Arpaket</span> — All rights reserved
-      </p>
+      </footer>
     </div>
   );
 }

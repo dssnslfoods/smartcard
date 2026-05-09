@@ -21,6 +21,7 @@ import {
   Menu,
   X,
   Building2,
+  HelpCircle,
 } from "lucide-react";
 import type { Profile } from "@/lib/supabase/types";
 
@@ -38,6 +39,7 @@ const NAV: Item[] = [
   { href: "/admin/events", label: "Events", icon: CalendarRange, adminOnly: true },
   { href: "/admin/users", label: "Users", icon: Users, adminOnly: true },
   { href: "/admin/companies", label: "Companies", icon: Building2, superAdminOnly: true },
+  { href: "/help", label: "คู่มือ", icon: HelpCircle },
 ];
 
 export function AppShell({

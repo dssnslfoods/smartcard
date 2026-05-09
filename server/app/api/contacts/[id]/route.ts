@@ -4,6 +4,8 @@ import type { EventResponse } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 
+// NOTE: id here is attendance.id (each row in dashboard = 1 attendance)
+
 function flattenEventResponse(response: EventResponse): Record<string, string> {
   const flat: Record<string, string> = {};
   for (const [key, val] of Object.entries(response)) {
@@ -24,6 +26,7 @@ export async function PATCH(
   const supabase = await createClient();
 
   const body = (await req.json()) as {
+    // Contact fields (master record)
     name?: string | null;
     position?: string | null;
     company?: string | null;
@@ -31,11 +34,23 @@ export async function PATCH(
     email?: string | null;
     website?: string | null;
     address?: string | null;
+    // Attendance fields
     event_id?: string | null;
     eventResponse?: EventResponse;
+    notes?: string | null;
   };
 
-  const update: Partial<{
+  // First fetch the attendance to find contact_id
+  const { data: att, error: attErr } = await supabase
+    .from("attendances")
+    .select("id, contact_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (attErr || !att)
+    return NextResponse.json({ error: "attendance not found" }, { status: 404 });
+
+  // Update contact (master) fields if provided
+  const contactUpdate: Partial<{
     name: string | null;
     position: string | null;
     company: string | null;
@@ -43,10 +58,7 @@ export async function PATCH(
     email: string | null;
     website: string | null;
     address: string | null;
-    event_id: string | null;
-    event_data: Record<string, string>;
-    updated_at: string;
-  }> = { updated_at: new Date().toISOString() };
+  }> = {};
   for (const k of [
     "name",
     "position",
@@ -55,23 +67,37 @@ export async function PATCH(
     "email",
     "website",
     "address",
-    "event_id",
   ] as const) {
-    if (k in body) update[k] = body[k] as string | null;
+    if (k in body) contactUpdate[k] = body[k] ?? null;
   }
-  if (body.eventResponse !== undefined) {
-    update.event_data = flattenEventResponse(body.eventResponse);
+  if (Object.keys(contactUpdate).length > 0) {
+    const { error } = await supabase
+      .from("contacts")
+      .update(contactUpdate)
+      .eq("id", att.contact_id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  const { data, error } = await supabase
-    .from("contacts")
-    .update(update)
-    .eq("id", id)
-    .select()
-    .maybeSingle();
+  // Update attendance fields
+  const attUpdate: Partial<{
+    event_id: string | null;
+    event_data: Record<string, string>;
+    notes: string | null;
+  }> = {};
+  if ("event_id" in body) attUpdate.event_id = body.event_id ?? null;
+  if (body.eventResponse !== undefined)
+    attUpdate.event_data = flattenEventResponse(body.eventResponse);
+  if ("notes" in body) attUpdate.notes = body.notes ?? null;
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-  return NextResponse.json({ contact: data });
+  if (Object.keys(attUpdate).length > 0) {
+    const { error } = await supabase
+      .from("attendances")
+      .update(attUpdate)
+      .eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(
@@ -81,7 +107,7 @@ export async function DELETE(
   const { id } = await params;
   const supabase = await createClient();
   const { error } = await supabase
-    .from("contacts")
+    .from("attendances")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", id);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

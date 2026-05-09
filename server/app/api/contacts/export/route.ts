@@ -107,27 +107,21 @@ export async function GET(req: NextRequest) {
     }
 
     let query = supabase
-      .from("contacts")
+      .from("attendances")
       .select(
-        `id, name, position, company, phone, email, website, address,
-         image_urls, event_id, event_data, created_at,
+        `id, scanned_at, event_id, event_data, image_urls, notes,
+         contacts:contact_id ( id, name, position, company, phone, email, website, address ),
          events:event_id ( id, name, slug, event_date ),
          profiles:scanned_by ( id, email, display_name )`
       )
       .is("deleted_at", null)
-      .order("created_at", { ascending: false })
+      .order("scanned_at", { ascending: false })
       .limit(10000);
 
     if (eventId === "none") query = query.is("event_id", null);
     else if (eventId) query = query.eq("event_id", eventId);
-    if (dateFrom) query = query.gte("created_at", dateFrom);
-    if (dateTo) query = query.lte("created_at", dateTo);
-    if (search) {
-      const s = search.replace(/[%_]/g, (c) => `\\${c}`);
-      query = query.or(
-        `name.ilike.%${s}%,company.ilike.%${s}%,email.ilike.%${s}%,phone.ilike.%${s}%`
-      );
-    }
+    if (dateFrom) query = query.gte("scanned_at", dateFrom);
+    if (dateTo) query = query.lte("scanned_at", dateTo);
     for (const [k, v] of eventDataFilters) {
       query = query.ilike(`event_data->>${k}`, `%${v}%`);
     }
@@ -139,17 +133,21 @@ export async function GET(req: NextRequest) {
 
     type ExportRow = {
       id: string;
-      name: string | null;
-      position: string | null;
-      company: string | null;
-      phone: string | null;
-      email: string | null;
-      website: string | null;
-      address: string | null;
-      image_urls: string[] | null;
+      scanned_at: string;
       event_id: string | null;
       event_data: Record<string, string> | null;
-      created_at: string;
+      image_urls: string[] | null;
+      notes: string | null;
+      contacts: {
+        id: string;
+        name: string | null;
+        position: string | null;
+        company: string | null;
+        phone: string | null;
+        email: string | null;
+        website: string | null;
+        address: string | null;
+      } | null;
       events: {
         id: string;
         name: string;
@@ -162,7 +160,18 @@ export async function GET(req: NextRequest) {
         display_name: string | null;
       } | null;
     };
-    const data = (rows ?? []) as unknown as ExportRow[];
+    let data = (rows ?? []) as unknown as ExportRow[];
+
+    // Optional client-side search across joined fields
+    if (search) {
+      const s = search.toLowerCase();
+      data = data.filter((r) => {
+        const c = r.contacts;
+        return [c?.name, c?.company, c?.email, c?.phone]
+          .filter(Boolean)
+          .some((v) => String(v).toLowerCase().includes(s));
+      });
+    }
 
     // Get all unique event configs to know fields per event
     const eventIds = [...new Set(data.map((r) => r.event_id).filter(Boolean))];
@@ -225,15 +234,16 @@ export async function GET(req: NextRequest) {
     applyHeaderStyle(ws.getRow(1));
 
     data.forEach((r, idx) => {
+      const c = r.contacts;
       const rowData: Record<string, unknown> = {
-        date: formatDateTime(r.created_at),
-        name: r.name ?? "",
-        position: r.position ?? "",
-        company: r.company ?? "",
-        phone: r.phone ?? "",
-        email: r.email ?? "",
-        website: r.website ?? "",
-        address: r.address ?? "",
+        date: formatDateTime(r.scanned_at),
+        name: c?.name ?? "",
+        position: c?.position ?? "",
+        company: c?.company ?? "",
+        phone: c?.phone ?? "",
+        email: c?.email ?? "",
+        website: c?.website ?? "",
+        address: c?.address ?? "",
         scanner: r.profiles?.display_name ?? r.profiles?.email ?? "",
         eventName: r.events?.name ?? "",
         eventDate: r.events?.event_date ?? "",
@@ -249,8 +259,8 @@ export async function GET(req: NextRequest) {
       const row = ws.addRow(rowData);
       applyDataStyle(row, idx % 2 === 1);
 
-      if (r.email) setSimpleHyperlink(row.getCell("email"), `mailto:${r.email}`, r.email);
-      if (r.website) setSimpleHyperlink(row.getCell("website"), r.website);
+      if (c?.email) setSimpleHyperlink(row.getCell("email"), `mailto:${c.email}`, c.email);
+      if (c?.website) setSimpleHyperlink(row.getCell("website"), c.website);
       if (r.image_urls && r.image_urls.length > 0)
         setImagesHyperlink(row.getCell("images"), r.image_urls);
     });

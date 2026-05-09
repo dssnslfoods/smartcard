@@ -58,11 +58,21 @@ export type ContactRow = {
   website: string | null;
   address: string | null;
   image_urls: string[];
+  first_scanned_at: string;
+  last_scanned_at: string;
+  first_scanned_by: string | null;
+  deleted_at: string | null;
+};
+
+export type AttendanceRow = {
+  id: string;
+  contact_id: string;
   event_id: string | null;
   event_data: Record<string, string>;
+  image_urls: string[];
+  notes: string | null;
   scanned_by: string | null;
-  created_at: string;
-  updated_at: string;
+  scanned_at: string;
   deleted_at: string | null;
 };
 
@@ -87,12 +97,20 @@ type ContactTable = {
   Relationships: [];
 };
 
+type AttendanceTable = {
+  Row: AttendanceRow;
+  Insert: Partial<AttendanceRow>;
+  Update: Partial<AttendanceRow>;
+  Relationships: [];
+};
+
 export type Database = {
   public: {
     Tables: {
       profiles: ProfileTable;
       events: EventTable;
       contacts: ContactTable;
+      attendances: AttendanceTable;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

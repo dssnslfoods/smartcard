@@ -51,6 +51,10 @@ import {
   ContactDeleteDialog,
   type DeleteTarget,
 } from "@/components/dashboard/ContactDeleteDialog";
+import {
+  ScannerRankingDialog,
+  type ScannerRow,
+} from "@/components/dashboard/ScannerRankingDialog";
 
 type ContactRecord = {
   id: string;
@@ -94,6 +98,33 @@ export default function DashboardPage() {
   // Edit/delete dialogs
   const [editing, setEditing] = useState<ContactEditTarget | null>(null);
   const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
+  const [showRanking, setShowRanking] = useState(false);
+
+  // Compute scanner ranking from current contacts list
+  const scannerRanking = useMemo<ScannerRow[]>(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const map = new Map<string, ScannerRow>();
+    for (const c of contacts) {
+      if (!c.scanned_by) continue;
+      const profile = c.profiles;
+      const isToday = new Date(c.created_at) >= today;
+      const existing = map.get(c.scanned_by);
+      if (existing) {
+        existing.count += 1;
+        if (isToday) existing.todayCount += 1;
+      } else {
+        map.set(c.scanned_by, {
+          id: c.scanned_by,
+          name: profile?.display_name ?? profile?.email ?? "Unknown",
+          email: profile?.email ?? "",
+          count: 1,
+          todayCount: isToday ? 1 : 0,
+        });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [contacts]);
 
   const loadEvents = useCallback(async () => {
     try {
@@ -208,7 +239,15 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <StatsCards events={events} contacts={contacts} total={total} />
+      <StatsCards
+        events={events}
+        contacts={contacts}
+        total={total}
+        scannerCount={scannerRanking.length}
+        onClickScanners={() =>
+          scannerRanking.length > 0 && setShowRanking(true)
+        }
+      />
 
       <ActivityChart contacts={contacts} />
 
@@ -557,6 +596,11 @@ export default function DashboardPage() {
           loadContacts();
         }}
       />
+      <ScannerRankingDialog
+        open={showRanking}
+        scanners={scannerRanking}
+        onClose={() => setShowRanking(false)}
+      />
     </div>
   );
 }
@@ -565,10 +609,14 @@ function StatsCards({
   events,
   contacts,
   total,
+  scannerCount,
+  onClickScanners,
 }: {
   events: EventRow[];
   contacts: ContactRecord[];
   total: number;
+  scannerCount: number;
+  onClickScanners?: () => void;
 }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -585,6 +633,7 @@ function StatsCards({
       icon: ContactRound,
       gradient: "from-blue-500/15 to-blue-500/5",
       iconTint: "bg-blue-500 text-white",
+      onClick: undefined as undefined | (() => void),
     },
     {
       label: "เพิ่มวันนี้",
@@ -592,6 +641,7 @@ function StatsCards({
       icon: Calendar,
       gradient: "from-emerald-500/15 to-emerald-500/5",
       iconTint: "bg-emerald-500 text-white",
+      onClick: undefined as undefined | (() => void),
     },
     {
       label: "Event ที่ active",
@@ -599,39 +649,58 @@ function StatsCards({
       icon: CalendarRange,
       gradient: "from-violet-500/15 to-violet-500/5",
       iconTint: "bg-violet-500 text-white",
+      onClick: undefined as undefined | (() => void),
     },
     {
       label: "ผู้สแกน",
-      value: new Set(contacts.map((c) => c.scanned_by).filter(Boolean))
-        .size.toLocaleString("th-TH"),
+      value: scannerCount.toLocaleString("th-TH"),
       icon: Users,
       gradient: "from-amber-500/15 to-amber-500/5",
       iconTint: "bg-amber-500 text-white",
-    },
+      onClick: scannerCount > 0 ? onClickScanners : undefined,
+      hint: scannerCount > 0 ? "ดูอันดับ →" : undefined,
+    } as const,
   ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {items.map((it) => (
-        <Card
-          key={it.label}
-          className={`relative overflow-hidden card-hover bg-gradient-to-br ${it.gradient} border-0 shadow-soft`}
-        >
-          <CardContent className="p-4 flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="text-xs text-muted-foreground font-medium">
-                {it.label}
-              </p>
-              <p className="text-2xl font-bold tracking-tight mt-0.5 truncate">
-                {it.value}
-              </p>
+      {items.map((it) => {
+        const clickable = !!it.onClick;
+        const Wrapper = clickable ? "button" : "div";
+        return (
+          <Wrapper
+            key={it.label}
+            type={clickable ? "button" : undefined}
+            onClick={it.onClick}
+            className={`relative overflow-hidden card-hover bg-gradient-to-br ${
+              it.gradient
+            } border-0 shadow-soft rounded-xl text-left ${
+              clickable
+                ? "cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 hover:shadow-md"
+                : ""
+            }`}
+          >
+            <div className="p-4 flex items-center justify-between">
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground font-medium">
+                  {it.label}
+                </p>
+                <p className="text-2xl font-bold tracking-tight mt-0.5 truncate">
+                  {it.value}
+                </p>
+                {"hint" in it && it.hint && (
+                  <p className="text-[10px] text-amber-700 font-semibold mt-0.5">
+                    {it.hint}
+                  </p>
+                )}
+              </div>
+              <div className={`rounded-xl p-2.5 shadow-sm ${it.iconTint}`}>
+                <it.icon className="h-5 w-5" />
+              </div>
             </div>
-            <div className={`rounded-xl p-2.5 shadow-sm ${it.iconTint}`}>
-              <it.icon className="h-5 w-5" />
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+          </Wrapper>
+        );
+      })}
     </div>
   );
 }

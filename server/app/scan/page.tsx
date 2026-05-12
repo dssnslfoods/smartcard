@@ -22,8 +22,10 @@ import {
   AlertCircle,
   X,
   Sparkles,
+  Video,
 } from "lucide-react";
 import { fileToResizedBase64 } from "@/lib/image-resize";
+import { WebcamCaptureDialog } from "@/components/WebcamCaptureDialog";
 import type { EventConfig as Evt } from "@/lib/supabase/types";
 
 type CardData = {
@@ -95,6 +97,7 @@ export default function ScanPage() {
   const uploadPromiseRef = useRef<Promise<string[]> | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
+  const [webcamOpen, setWebcamOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/events", { cache: "no-store" })
@@ -111,6 +114,19 @@ export default function ScanPage() {
       const preview = URL.createObjectURL(file);
       setImages((prev) =>
         prev.length < MAX_IMAGES ? [...prev, { base64, preview }] : prev
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const addWebcamCapture = async (file: File, _base64Raw: string, previewUrl: string) => {
+    // Resize the captured frame to 1600px / 0.7 quality (same as file upload path)
+    setError(null);
+    try {
+      const base64 = await fileToResizedBase64(file);
+      setImages((prev) =>
+        prev.length < MAX_IMAGES ? [...prev, { base64, preview: previewUrl }] : prev
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -320,13 +336,25 @@ export default function ScanPage() {
                     </div>
                   ))}
                   {images.length < MAX_IMAGES && (
-                    <button
-                      onClick={() => cameraRef.current?.click()}
-                      className="aspect-[4/3] rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1 text-muted-foreground hover:bg-muted/50 transition-colors"
-                    >
-                      <Camera className="h-6 w-6" />
-                      <span className="text-xs">เพิ่มหน้าหลัง</span>
-                    </button>
+                    <div className="aspect-[4/3] rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-2 text-muted-foreground hover:bg-muted/50 transition-colors p-2">
+                      <div className="text-xs font-medium">เพิ่มหน้าหลัง</div>
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => cameraRef.current?.click()}
+                          className="rounded-md p-1.5 bg-background hover:bg-primary hover:text-primary-foreground transition-colors"
+                          title="ใช้กล้องมือถือ / ไฟล์"
+                        >
+                          <Camera className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => setWebcamOpen(true)}
+                          className="rounded-md p-1.5 bg-background hover:bg-primary hover:text-primary-foreground transition-colors"
+                          title="Webcam"
+                        >
+                          <Video className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -371,24 +399,36 @@ export default function ScanPage() {
 
           {images.length === 0 ? (
             <Card>
-              <CardContent className="p-6 space-y-3">
+              <CardContent className="p-5 space-y-2.5">
                 <Button
                   size="lg"
-                  className="w-full h-16 text-base"
+                  className="w-full h-14 text-base"
                   onClick={() => cameraRef.current?.click()}
                 >
                   <Camera className="h-5 w-5" />
-                  ถ่ายรูปนามบัตร
+                  ถ่ายรูปนามบัตร (มือถือ)
                 </Button>
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full h-16 text-base"
+                  className="w-full h-14 text-base"
+                  onClick={() => setWebcamOpen(true)}
+                >
+                  <Video className="h-5 w-5" />
+                  ใช้กล้อง Webcam
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full h-14 text-base"
                   onClick={() => galleryRef.current?.click()}
                 >
                   <ImageIcon className="h-5 w-5" />
                   เลือกจากคลังรูปภาพ
                 </Button>
+                <p className="text-[11px] text-center text-muted-foreground pt-1">
+                  💡 มือถือ → ใช้กล้องในตัว · Laptop/PC → ใช้ Webcam
+                </p>
               </CardContent>
             </Card>
           ) : (
@@ -604,6 +644,12 @@ export default function ScanPage() {
           </CardContent>
         </Card>
       )}
+
+      <WebcamCaptureDialog
+        open={webcamOpen}
+        onClose={() => setWebcamOpen(false)}
+        onCapture={addWebcamCapture}
+      />
     </div>
   );
 }

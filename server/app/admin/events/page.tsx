@@ -243,6 +243,15 @@ export default function AdminEventsPage() {
               >
                 <Pencil className="h-4 w-4" />
               </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onDuplicateEvent(ev)}
+                title={`คัดลอก event นี้ (สร้างใหม่พร้อม ${(ev.fields ?? []).length} fields)`}
+                className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
               {!ev.archived_at && (
                 <Button
                   variant="ghost"

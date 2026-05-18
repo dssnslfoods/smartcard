@@ -22,6 +22,7 @@ import {
   X,
   Building2,
   HelpCircle,
+  UserCircle,
 } from "lucide-react";
 import type { Profile } from "@/lib/supabase/types";
 
@@ -112,15 +113,22 @@ export function AppShell({
           <div className="flex-1" />
 
           {/* User menu */}
-          <div className="hidden md:flex items-center gap-3">
-            <div className="text-right text-sm leading-tight">
-              <div className="font-medium truncate max-w-[140px]">
-                {profile.display_name || profile.email}
+          <div className="hidden md:flex items-center gap-2">
+            <Link
+              href="/account"
+              className="flex items-center gap-2.5 rounded-md p-1.5 hover:bg-muted transition-colors"
+              title="บัญชีของฉัน"
+            >
+              <div className="text-right text-sm leading-tight">
+                <div className="font-medium truncate max-w-[140px]">
+                  {profile.display_name || profile.email}
+                </div>
+                <div className="text-xs text-muted-foreground capitalize">
+                  {profile.role}
+                </div>
               </div>
-              <div className="text-xs text-muted-foreground capitalize">
-                {profile.role}
-              </div>
-            </div>
+              <UserCircle className="h-7 w-7 text-muted-foreground" />
+            </Link>
             <button
               onClick={onLogout}
               className="rounded-md p-2 hover:bg-muted text-muted-foreground hover:text-foreground"
@@ -162,14 +170,20 @@ export function AppShell({
                 );
               })}
               <div className="border-t pt-2 mt-2">
-                <div className="px-3 py-2 text-sm">
-                  <div className="font-medium">
-                    {profile.display_name || profile.email}
+                <Link
+                  href="/account"
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-md text-sm hover:bg-muted"
+                >
+                  <UserCircle className="h-4 w-4" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">
+                      {profile.display_name || profile.email}
+                    </div>
+                    <div className="text-xs text-muted-foreground capitalize">
+                      {profile.role} · บัญชีของฉัน
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground capitalize">
-                    {profile.role}
-                  </div>
-                </div>
+                </Link>
                 <button
                   onClick={onLogout}
                   className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm hover:bg-muted text-destructive"

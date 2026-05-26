@@ -6,7 +6,14 @@
  * Unauthorized copying, modification, distribution, or use is prohibited.
  */
 
-const MODELS = ["gemini-2.0-flash", "gemini-2.5-flash-lite", "gemini-2.5-flash"];
+// Ordered by free-tier generosity + accuracy. On 429/quota the next is tried.
+// Enable billing on the API key to lift these limits dramatically.
+const MODELS = [
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-flash",
+];
 const MAX_RETRIES = 2;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -141,5 +148,15 @@ export async function extractCardFromImage(
       if (!overloaded) throw err;
     }
   }
-  throw lastErr instanceof Error ? lastErr : new Error("All Gemini models unavailable");
+
+  // All models exhausted — give a clear, user-facing message if it was a quota issue
+  const lastMsg = lastErr instanceof Error ? lastErr.message : String(lastErr);
+  if (/\b(429|quota|RESOURCE_EXHAUSTED|free_tier)\b/i.test(lastMsg)) {
+    throw new Error(
+      "โควต้าการสแกน AI วันนี้เต็มแล้ว — กรุณาติดต่อผู้ดูแลระบบให้เปิด billing บน Gemini API (หรือรอวันถัดไป)"
+    );
+  }
+  throw lastErr instanceof Error
+    ? lastErr
+    : new Error("ระบบสแกนไม่พร้อมใช้งานชั่วคราว — ลองใหม่อีกครั้ง");
 }

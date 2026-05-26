@@ -100,31 +100,12 @@ export default function DashboardPage() {
   const [deleting, setDeleting] = useState<DeleteTarget | null>(null);
   const [showRanking, setShowRanking] = useState(false);
 
-  // Compute scanner ranking from current contacts list
-  const scannerRanking = useMemo<ScannerRow[]>(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const map = new Map<string, ScannerRow>();
-    for (const c of contacts) {
-      if (!c.scanned_by) continue;
-      const profile = c.profiles;
-      const isToday = new Date(c.created_at) >= today;
-      const existing = map.get(c.scanned_by);
-      if (existing) {
-        existing.count += 1;
-        if (isToday) existing.todayCount += 1;
-      } else {
-        map.set(c.scanned_by, {
-          id: c.scanned_by,
-          name: profile?.display_name ?? profile?.email ?? "Unknown",
-          email: profile?.email ?? "",
-          count: 1,
-          todayCount: isToday ? 1 : 0,
-        });
-      }
-    }
-    return Array.from(map.values()).sort((a, b) => b.count - a.count);
-  }, [contacts]);
+  // Aggregated stats (server-computed over ALL matching rows, not just current page)
+  const [todayCount, setTodayCount] = useState(0);
+  const [scannerRanking, setScannerRanking] = useState<ScannerRow[]>([]);
+  const [dailySeries, setDailySeries] = useState<
+    { date: string; label: string; count: number }[]
+  >([]);
 
   const loadEvents = useCallback(async () => {
     try {
@@ -166,6 +147,30 @@ export default function DashboardPage() {
     }
   }, [eventFilter, dateFrom, dateTo, search, eventDataFilters, page]);
 
+  // Load aggregated stats (todayCount + scanner ranking) over ALL filtered rows
+  const loadStats = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (eventFilter) params.set("event_id", eventFilter);
+      if (dateFrom) params.set("date_from", dateFrom);
+      if (dateTo) params.set("date_to", new Date(dateTo + "T23:59:59").toISOString());
+      if (search) params.set("search", search);
+      for (const [k, v] of Object.entries(eventDataFilters)) {
+        if (v) params.set(`event_data[${k}]`, v);
+      }
+      const res = await fetch(`/api/contacts/stats?${params}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setTodayCount(data.todayCount ?? 0);
+      setScannerRanking(data.scannerRanking ?? []);
+      setDailySeries(data.dailySeries ?? []);
+    } catch {
+      /* stats are best-effort */
+    }
+  }, [eventFilter, dateFrom, dateTo, search, eventDataFilters]);
+
   useEffect(() => {
     loadEvents();
   }, [loadEvents]);
@@ -173,6 +178,10 @@ export default function DashboardPage() {
   useEffect(() => {
     loadContacts();
   }, [loadContacts]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
 
   // Reset page on filter change
   useEffect(() => {
@@ -221,7 +230,10 @@ export default function DashboardPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => loadContacts()}
+            onClick={() => {
+              loadContacts();
+              loadStats();
+            }}
             disabled={refreshing}
           >
             <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
@@ -241,15 +253,15 @@ export default function DashboardPage() {
 
       <StatsCards
         events={events}
-        contacts={contacts}
         total={total}
+        todayCount={todayCount}
         scannerCount={scannerRanking.length}
         onClickScanners={() =>
           scannerRanking.length > 0 && setShowRanking(true)
         }
       />
 
-      <ActivityChart contacts={contacts} />
+      <ActivityChart series={dailySeries} />
 
       {error && (
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 flex items-start gap-2">
@@ -607,23 +619,17 @@ export default function DashboardPage() {
 
 function StatsCards({
   events,
-  contacts,
   total,
+  todayCount,
   scannerCount,
   onClickScanners,
 }: {
   events: EventRow[];
-  contacts: ContactRecord[];
   total: number;
+  todayCount: number;
   scannerCount: number;
   onClickScanners?: () => void;
 }) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayCount = contacts.filter(
-    (c) => new Date(c.created_at) >= today
-  ).length;
-
   const activeEvents = events.filter((e) => e.active && !e.archived_at).length;
 
   const items = [
@@ -705,26 +711,11 @@ function StatsCards({
   );
 }
 
-function ActivityChart({ contacts }: { contacts: ContactRecord[] }) {
-  const series = useMemo(() => {
-    const map = new Map<string, number>();
-    for (let i = 29; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().slice(0, 10);
-      map.set(key, 0);
-    }
-    for (const c of contacts) {
-      const key = c.created_at.slice(0, 10);
-      if (map.has(key)) map.set(key, (map.get(key) ?? 0) + 1);
-    }
-    return Array.from(map.entries()).map(([date, count]) => ({
-      date,
-      label: date.slice(5),
-      count,
-    }));
-  }, [contacts]);
-
+function ActivityChart({
+  series,
+}: {
+  series: { date: string; label: string; count: number }[];
+}) {
   return (
     <Card>
       <CardHeader className="pb-2">

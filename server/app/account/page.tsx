@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { isSystemController } from "@/lib/system";
 import {
   User,
   ShieldCheck,
@@ -20,6 +22,8 @@ import {
   AlertCircle,
   CheckCircle2,
   Loader2,
+  Power,
+  PowerOff,
 } from "lucide-react";
 
 type Profile = {
@@ -47,6 +51,13 @@ export default function AccountPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // System control state (controller account only)
+  const [sysActive, setSysActive] = useState<boolean>(true);
+  const [sysMessage, setSysMessage] = useState("");
+  const [sysSaving, setSysSaving] = useState(false);
+  const [sysError, setSysError] = useState<string | null>(null);
+  const [sysSuccess, setSysSuccess] = useState(false);
+
   useEffect(() => {
     (async () => {
       try {
@@ -72,6 +83,48 @@ export default function AccountPage() {
       }
     })();
   }, []);
+
+  // Load system status for the controller account.
+  useEffect(() => {
+    if (!profile || !isSystemController(profile.email)) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/system", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          setSysActive(data.isActive !== false);
+          setSysMessage(data.inactiveMessage || "");
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+  }, [profile]);
+
+  const onToggleSystem = async (nextActive: boolean) => {
+    setSysError(null);
+    setSysSuccess(false);
+    setSysSaving(true);
+    try {
+      const res = await fetch("/api/system", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isActive: nextActive,
+          inactiveMessage: sysMessage.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      setSysActive(data.isActive !== false);
+      setSysSuccess(true);
+      setTimeout(() => setSysSuccess(false), 4000);
+    } catch (e) {
+      setSysError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSysSaving(false);
+    }
+  };
 
   const onChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -306,6 +359,132 @@ export default function AccountPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* System control — visible only to the controller account */}
+      {isSystemController(profile.email) && (
+        <Card className="shadow-soft border-amber-200">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div
+                className={`rounded-xl p-2 ${
+                  sysActive
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-amber-100 text-amber-700"
+                }`}
+              >
+                {sysActive ? (
+                  <Power className="h-4 w-4" />
+                ) : (
+                  <PowerOff className="h-4 w-4" />
+                )}
+              </div>
+              <div>
+                <h2 className="font-semibold">ควบคุมระบบ (System Control)</h2>
+                <p className="text-xs text-muted-foreground">
+                  เปิด/ปิดการใช้งานระบบทั้งหมด — เฉพาะคุณเท่านั้นที่เห็นและใช้งานได้
+                </p>
+              </div>
+            </div>
+
+            {/* Status banner */}
+            <div
+              className={`rounded-md px-3 py-2.5 text-sm font-medium flex items-center gap-2 ${
+                sysActive
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-amber-50 text-amber-700 border border-amber-200"
+              }`}
+            >
+              {sysActive ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  ระบบเปิดใช้งานปกติ — ผู้ใช้ทุกคนเข้าใช้งานได้
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="h-4 w-4" />
+                  ระบบปิดปรับปรุง — มีเพียงคุณเท่านั้นที่เข้าใช้งานได้
+                </>
+              )}
+            </div>
+
+            <div className="mt-4">
+              <Label className="mb-1.5 block">
+                ข้อความที่จะแสดงให้ผู้ใช้ระหว่างปิดระบบ
+              </Label>
+              <Textarea
+                value={sysMessage}
+                onChange={(e) => setSysMessage(e.target.value)}
+                rows={3}
+                placeholder="เช่น ขณะนี้ระบบปิดปรับปรุงชั่วคราว กรุณากลับมาใหม่ภายหลัง"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                ผู้ใช้คนอื่นจะเห็นข้อความนี้เมื่อพยายามเข้าใช้งานระหว่างปิดระบบ
+              </p>
+            </div>
+
+            {sysError && (
+              <div className="mt-3 rounded-md bg-destructive/10 px-3 py-2 flex items-start gap-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>{sysError}</span>
+              </div>
+            )}
+            {sysSuccess && (
+              <div className="mt-3 rounded-md bg-emerald-50 border border-emerald-200 px-3 py-2 flex items-start gap-2 text-sm text-emerald-700">
+                <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>บันทึกการตั้งค่าระบบเรียบร้อย ✓</span>
+              </div>
+            )}
+
+            <div className="mt-4 flex gap-2">
+              {sysActive ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={sysSaving}
+                  onClick={() => onToggleSystem(false)}
+                  className="flex-1"
+                >
+                  {sysSaving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <PowerOff className="h-4 w-4" />
+                  )}
+                  ปิดระบบ (Inactive)
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={sysSaving}
+                    onClick={() => onToggleSystem(false)}
+                  >
+                    {sysSaving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4" />
+                    )}
+                    บันทึกข้อความ
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={sysSaving}
+                    onClick={() => onToggleSystem(true)}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {sysSaving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Power className="h-4 w-4" />
+                    )}
+                    เปิดระบบ (Active)
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

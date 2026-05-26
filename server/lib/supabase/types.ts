@@ -134,6 +134,21 @@ type CompanyTable = {
   Relationships: [];
 };
 
+export type SystemSettings = {
+  id: number;
+  is_active: boolean;
+  inactive_message: string | null;
+  updated_by: string | null;
+  updated_at: string | null;
+};
+
+type SystemSettingsTable = {
+  Row: SystemSettings;
+  Insert: Partial<SystemSettings>;
+  Update: Partial<SystemSettings>;
+  Relationships: [];
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -142,6 +157,7 @@ export type Database = {
       contacts: ContactTable;
       attendances: AttendanceTable;
       companies: CompanyTable;
+      system_settings: SystemSettingsTable;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

@@ -6,13 +6,14 @@
  * Unauthorized copying, modification, distribution, or use is prohibited.
  */
 
-// Ordered by free-tier generosity + accuracy. On 429/quota the next is tried.
-// Enable billing on the API key to lift these limits dramatically.
+// Ordered by accuracy + free-tier generosity. On 429/quota/404 the next is tried.
+// NOTE: the gemini-2.0-* models were retired for new API users (404), so we use
+// the current 2.5 line. Enable billing on the key to lift rate limits.
 const MODELS = [
-  "gemini-2.0-flash",
-  "gemini-2.0-flash-lite",
-  "gemini-2.5-flash-lite",
   "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-flash-latest",
+  "gemini-flash-lite-latest",
 ];
 const MAX_RETRIES = 2;
 
@@ -144,8 +145,12 @@ export async function extractCardFromImage(
     } catch (err) {
       lastErr = err;
       const msg = err instanceof Error ? err.message : String(err);
-      const overloaded = /\b(503|429|UNAVAILABLE|overloaded|high demand)\b/i.test(msg);
-      if (!overloaded) throw err;
+      // 404/NOT_FOUND = model retired/unavailable → just try the next model.
+      const tryNext =
+        /\b(503|429|404|UNAVAILABLE|overloaded|high demand|NOT_FOUND|no longer available)\b/i.test(
+          msg
+        );
+      if (!tryNext) throw err;
     }
   }
 

@@ -226,12 +226,70 @@ export async function GET(req: NextRequest) {
       { header: "รูปนามบัตร", key: "images", width: 16 },
     ];
 
+    // If any criteria filters were applied, add a "เกณฑ์ที่ตรง" column showing
+    // which selected values each row actually matched.
+    const hasCriteria = filtersByKey.size > 0;
+    if (hasCriteria) {
+      baseCols.push({ header: "เกณฑ์ที่ตรง", key: "criteria", width: 42 });
+    }
+
     const eventFieldKeys = new Map<string, EventField>(); // key -> field
     for (const ev of eventConfigs) {
       for (const f of ev.fields) {
         if (!eventFieldKeys.has(f.key)) eventFieldKeys.set(f.key, f);
       }
     }
+
+    // Compute which selected values matched a given row's event_data.
+    // Returns a human-readable string like:
+    //   "ความสนใจ: Snack, Drink · Segment: Restaurant"
+    const matchedCriteriaFor = (
+      ed: Record<string, unknown>
+    ): string => {
+      const parts: string[] = [];
+      for (const [key, wanted] of filtersByKey) {
+        const val = ed[key];
+        const wantedLower = wanted.map((w) => w.toLowerCase());
+        const matched: string[] = [];
+        if (
+          val &&
+          typeof val === "object" &&
+          !Array.isArray(val) &&
+          Array.isArray((val as { selected?: unknown }).selected)
+        ) {
+          const obj = val as { selected: unknown[]; other?: string };
+          for (const s of obj.selected) {
+            const sv = String(s);
+            if (wantedLower.includes(sv.toLowerCase())) matched.push(sv);
+          }
+          if (obj.other) {
+            const otherLower = String(obj.other).toLowerCase();
+            for (const w of wanted) {
+              if (otherLower.includes(w.toLowerCase()))
+                matched.push(`${w} (อื่นๆ)`);
+            }
+          }
+        } else if (Array.isArray(val)) {
+          for (const s of val) {
+            const sv = String(s);
+            if (wantedLower.includes(sv.toLowerCase())) matched.push(sv);
+          }
+        } else if (typeof val === "string" && val) {
+          const valLower = val.toLowerCase();
+          for (const w of wanted) {
+            if (valLower.includes(w.toLowerCase())) matched.push(w);
+          }
+        }
+        if (matched.length > 0) {
+          const f = eventFieldKeys.get(key);
+          const label = f ? f.labelTh : key;
+          // dedupe while preserving order
+          const uniq = Array.from(new Set(matched));
+          parts.push(`${label}: ${uniq.join(", ")}`);
+        }
+      }
+      return parts.join(" · ");
+    };
     const dynamicCols: Col[] = [];
     for (const [key, f] of eventFieldKeys) {
       dynamicCols.push({
@@ -274,15 +332,35 @@ export async function GET(req: NextRequest) {
         eventDate: r.events?.event_date ?? "",
         images: "",
       };
-      const ed = r.event_data ?? {};
+      const ed = (r.event_data ?? {}) as Record<string, unknown>;
+      if (hasCriteria) rowData.criteria = matchedCriteriaFor(ed);
       for (const [key] of eventFieldKeys) {
-        rowData[key] = ed[key] ?? "";
+        const v = ed[key];
+        // Pretty-print multiselect objects: "Snack, Drink (อื่นๆ: Coffee)"
+        if (
+          v &&
+          typeof v === "object" &&
+          !Array.isArray(v) &&
+          Array.isArray((v as { selected?: unknown }).selected)
+        ) {
+          const obj = v as { selected: unknown[]; other?: string };
+          const sel = obj.selected.map((s) => String(s)).join(", ");
+          rowData[key] = obj.other ? `${sel}${sel ? " · " : ""}อื่นๆ: ${obj.other}` : sel;
+        } else {
+          rowData[key] = v ?? "";
+        }
         const otherKey = `${key}__other`;
-        if (otherKey in ed) rowData[otherKey] = ed[otherKey];
+        if (otherKey in ed) rowData[otherKey] = (ed as Record<string, unknown>)[otherKey];
       }
 
       const row = ws.addRow(rowData);
       applyDataStyle(row, idx % 2 === 1);
+
+      // Highlight the criteria column so it stands out as the report's hook
+      if (hasCriteria) {
+        const cell = row.getCell("criteria");
+        cell.font = { bold: true, color: { argb: "FF6D28D9" } };
+      }
 
       if (c?.email) setSimpleHyperlink(row.getCell("email"), `mailto:${c.email}`, c.email);
       if (c?.website) setSimpleHyperlink(row.getCell("website"), c.website);
@@ -295,6 +373,40 @@ export async function GET(req: NextRequest) {
       from: { row: 1, column: 1 },
       to: { row: 1, column: ws.columnCount },
     };
+
+    // Optional summary sheet — only when filters were applied
+    if (hasCriteria || dateFrom || dateTo || eventId) {
+      const summary = wb.addWorksheet("Criteria");
+      summary.columns = [
+        { header: "เกณฑ์", key: "label", width: 28 },
+        { header: "ค่าที่เลือก", key: "value", width: 60 },
+      ];
+      applyHeaderStyle(summary.getRow(1));
+
+      const addLine = (label: string, value: string) => {
+        const r = summary.addRow({ label, value });
+        applyDataStyle(r, summary.rowCount % 2 === 0);
+      };
+
+      if (eventId === "none") addLine("Event", "(ไม่ระบุ event)");
+      else if (eventId) {
+        const ev = eventConfigs.find((e) => e.id === eventId);
+        addLine("Event", ev ? `${ev.name} (${ev.slug})` : eventId);
+      } else {
+        addLine("Event", "ทุก event");
+      }
+      if (dateFrom) addLine("วันที่เริ่ม", formatDateTime(dateFrom));
+      if (dateTo) addLine("วันที่สิ้นสุด", formatDateTime(dateTo));
+      for (const [key, vs] of filtersByKey) {
+        const f = eventFieldKeys.get(key);
+        const label = f ? `${f.labelTh} / ${f.labelEn}` : key;
+        addLine(label, vs.join(", "));
+      }
+      addLine("จำนวนผลลัพธ์", `${data.length.toLocaleString()} รายการ`);
+      addLine("สร้างเมื่อ", formatDateTime(new Date().toISOString()));
+
+      summary.views = [{ state: "frozen", ySplit: 1 }];
+    }
 
     const buffer = await wb.xlsx.writeBuffer();
     const date = new Date().toISOString().slice(0, 10);

@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
       .select("role")
       .eq("id", user.id)
       .maybeSingle();
-    if (me?.role !== "admin") {
+    if (me?.role !== "admin" && me?.role !== "super_admin") {
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     }
 

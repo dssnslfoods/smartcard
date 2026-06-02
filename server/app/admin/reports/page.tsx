@@ -169,7 +169,7 @@ export default function ReportsPage() {
         <div className="rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 text-white p-3 shadow-glow-primary">
           <FileBarChart2 className="h-6 w-6" />
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold tracking-tight">
             รายงานตามความสนใจ
           </h1>
@@ -177,6 +177,19 @@ export default function ReportsPage() {
             กรองผู้เข้าร่วมตามฟิลด์ความสนใจของ event แล้ว export เป็น Excel
           </p>
         </div>
+        <Button
+          type="button"
+          disabled={exporting}
+          onClick={onExport}
+          className="bg-emerald-600 hover:bg-emerald-700 shrink-0"
+        >
+          {exporting ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          <span className="hidden sm:inline">Export Excel</span>
+        </Button>
       </header>
 
       {/* Step 1: Event */}

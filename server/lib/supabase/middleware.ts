@@ -133,12 +133,8 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    // /admin/reports is restricted to the system controller account only
-    if (path.startsWith("/admin/reports") && !isSystemController(user.email)) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
-      return NextResponse.redirect(url);
-    }
+    // /admin/reports: all admins (and super_admins) can access — already
+    // gated by the isAdmin check above.
   }
 
   // Logged in but on /login → redirect by role

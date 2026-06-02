@@ -42,7 +42,7 @@ const NAV: Item[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
   { href: "/admin/events", label: "Events", icon: CalendarRange, adminOnly: true },
   { href: "/admin/users", label: "Users", icon: Users, adminOnly: true },
-  { href: "/admin/reports", label: "รายงาน", icon: FileBarChart2, controllerOnly: true },
+  { href: "/admin/reports", label: "รายงาน", icon: FileBarChart2, adminOnly: true },
   { href: "/admin/companies", label: "Companies", icon: Building2, superAdminOnly: true },
   { href: "/help", label: "คู่มือ", icon: HelpCircle },
 ];

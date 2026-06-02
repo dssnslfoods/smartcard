@@ -130,8 +130,25 @@ export async function GET(req: NextRequest) {
     else if (eventId) query = query.eq("event_id", eventId);
     if (dateFrom) query = query.gte("scanned_at", dateFrom);
     if (dateTo) query = query.lte("scanned_at", dateTo);
+
+    // Group filters by key. Multiple values for the same key OR together
+    // (e.g. interests=Snack OR interests=Drink); different keys AND together.
+    const filtersByKey = new Map<string, string[]>();
     for (const [k, v] of eventDataFilters) {
-      query = query.ilike(`event_data->>${k}`, `%${v}%`);
+      if (!filtersByKey.has(k)) filtersByKey.set(k, []);
+      filtersByKey.get(k)!.push(v);
+    }
+    const escapeOrValue = (s: string) =>
+      s.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/\)/g, "\\)");
+    for (const [k, vs] of filtersByKey) {
+      if (vs.length === 1) {
+        query = query.ilike(`event_data->>${k}`, `%${vs[0]}%`);
+      } else {
+        const orParts = vs
+          .map((v) => `event_data->>${k}.ilike.%${escapeOrValue(v)}%`)
+          .join(",");
+        query = query.or(orParts);
+      }
     }
 
     const { data: rows, error } = await query;

@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { isSystemController } from "@/lib/system";
 import {
   Camera,
   LayoutDashboard,
@@ -23,6 +24,7 @@ import {
   Building2,
   HelpCircle,
   UserCircle,
+  FileBarChart2,
 } from "lucide-react";
 import type { Profile } from "@/lib/supabase/types";
 
@@ -32,6 +34,7 @@ type Item = {
   icon: React.ComponentType<{ className?: string }>;
   adminOnly?: boolean;
   superAdminOnly?: boolean;
+  controllerOnly?: boolean;
 };
 
 const NAV: Item[] = [
@@ -39,6 +42,7 @@ const NAV: Item[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: true },
   { href: "/admin/events", label: "Events", icon: CalendarRange, adminOnly: true },
   { href: "/admin/users", label: "Users", icon: Users, adminOnly: true },
+  { href: "/admin/reports", label: "รายงาน", icon: FileBarChart2, controllerOnly: true },
   { href: "/admin/companies", label: "Companies", icon: Building2, superAdminOnly: true },
   { href: "/help", label: "คู่มือ", icon: HelpCircle },
 ];
@@ -55,6 +59,7 @@ export function AppShell({
   const [menuOpen, setMenuOpen] = useState(false);
 
   const items = NAV.filter((i) => {
+    if (i.controllerOnly) return isSystemController(profile.email);
     if (i.superAdminOnly) return profile.role === "super_admin";
     if (i.adminOnly) return profile.role === "admin" || profile.role === "super_admin";
     return true;

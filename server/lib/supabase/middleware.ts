@@ -132,6 +132,13 @@ export async function updateSession(request: NextRequest) {
       url.pathname = "/dashboard";
       return NextResponse.redirect(url);
     }
+
+    // /admin/reports is restricted to the system controller account only
+    if (path.startsWith("/admin/reports") && !isSystemController(user.email)) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
   }
 
   // Logged in but on /login → redirect by role

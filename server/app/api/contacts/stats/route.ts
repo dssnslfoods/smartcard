@@ -47,8 +47,24 @@ export async function GET(req: NextRequest) {
   if (scannedBy) query = query.eq("scanned_by", scannedBy);
   if (dateFrom) query = query.gte("scanned_at", dateFrom);
   if (dateTo) query = query.lte("scanned_at", dateTo);
+  // Group filters by key: multiple values for same key OR together;
+  // different keys AND together. Mirrors /api/contacts/export.
+  const filtersByKey = new Map<string, string[]>();
   for (const [k, v] of eventDataFilters) {
-    query = query.ilike(`event_data->>${k}`, `%${v}%`);
+    if (!filtersByKey.has(k)) filtersByKey.set(k, []);
+    filtersByKey.get(k)!.push(v);
+  }
+  const escapeOrValue = (s: string) =>
+    s.replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/\)/g, "\\)");
+  for (const [k, vs] of filtersByKey) {
+    if (vs.length === 1) {
+      query = query.ilike(`event_data->>${k}`, `%${vs[0]}%`);
+    } else {
+      const orParts = vs
+        .map((v) => `event_data->>${k}.ilike.%${escapeOrValue(v)}%`)
+        .join(",");
+      query = query.or(orParts);
+    }
   }
 
   const { data, error } = await query;

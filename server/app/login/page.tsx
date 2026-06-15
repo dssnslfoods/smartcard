@@ -532,7 +532,7 @@ function LoginAurora() {
               <div className="flex justify-between mb-1.5 text-[13px] font-semibold text-slate-700">
                 <span>รหัสผ่าน</span>
                 <a
-                  href="mailto:arnon@def2design.com?subject=ลืมรหัสผ่าน SmartCard"
+                  href="mailto:maliwan.th@nslfoods.com?cc=jariya.mu@nslfoods.com&subject=ลืมรหัสผ่าน SmartCard"
                   className="text-indigo-600 font-semibold hover:underline"
                 >
                   ลืมรหัสผ่าน?
@@ -602,7 +602,7 @@ function LoginAurora() {
             <p className="text-center text-[13px] text-slate-500 mt-5">
               ยังไม่มีบัญชีหรือมีปัญหา?{" "}
               <a
-                href="mailto:arnon@def2design.com?subject=ขอเข้าใช้ SmartCard"
+                href="mailto:maliwan.th@nslfoods.com?cc=jariya.mu@nslfoods.com&subject=ขอเข้าใช้ SmartCard"
                 className="text-indigo-600 font-semibold hover:underline"
               >
                 ติดต่อผู้ดูแลระบบ

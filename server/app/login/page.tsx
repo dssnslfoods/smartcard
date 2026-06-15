@@ -82,7 +82,7 @@ function LoginAurora() {
             right: -120,
             width: 520,
             height: 520,
-            background: "radial-gradient(circle, #6366F1 0%, transparent 70%)",
+            background: "radial-gradient(circle, #10B981 0%, transparent 70%)",
             opacity: 0.18,
           }}
         />
@@ -93,7 +93,7 @@ function LoginAurora() {
             left: -140,
             width: 480,
             height: 480,
-            background: "radial-gradient(circle, #A78BFA 0%, transparent 70%)",
+            background: "radial-gradient(circle, #6EE7B7 0%, transparent 70%)",
             opacity: 0.2,
             animationDelay: "-6s",
           }}
@@ -117,8 +117,8 @@ function LoginAurora() {
           <div
             className="w-10 h-10 rounded-[11px] flex items-center justify-center"
             style={{
-              background: "linear-gradient(135deg, #4F46E5, #7C3AED)",
-              boxShadow: "0 10px 28px -8px rgba(79,70,229,.5)",
+              background: "linear-gradient(135deg, #059669, #10B981)",
+              boxShadow: "0 10px 28px -8px rgba(5,150,105,.5)",
             }}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -153,9 +153,9 @@ function LoginAurora() {
           <span
             className="self-start inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full"
             style={{
-              color: "#4F46E5",
+              color: "#059669",
               background: "#fff",
-              border: "1px solid #E0E7FF",
+              border: "1px solid #A7F3D0",
               boxShadow: "0 1px 2px rgba(15,23,42,.04)",
             }}
           >
@@ -175,7 +175,7 @@ function LoginAurora() {
             <span
               style={{
                 background:
-                  "linear-gradient(135deg, #4F46E5, #7C3AED 60%, #EC4899)",
+                  "linear-gradient(135deg, #059669, #10B981 60%, #14B8A6)",
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
@@ -292,10 +292,10 @@ function LoginAurora() {
                   left: c.left,
                   right: c.right,
                   bottom: c.bottom,
-                  borderTop: c.bt ? "2.5px solid #4F46E5" : undefined,
-                  borderBottom: c.bb ? "2.5px solid #4F46E5" : undefined,
-                  borderLeft: c.bl ? "2.5px solid #4F46E5" : undefined,
-                  borderRight: c.br ? "2.5px solid #4F46E5" : undefined,
+                  borderTop: c.bt ? "2.5px solid #059669" : undefined,
+                  borderBottom: c.bb ? "2.5px solid #059669" : undefined,
+                  borderLeft: c.bl ? "2.5px solid #059669" : undefined,
+                  borderRight: c.br ? "2.5px solid #059669" : undefined,
                   borderTopLeftRadius: c.radius.topLeft,
                   borderTopRightRadius: c.radius.topRight,
                   borderBottomLeftRadius: c.radius.bottomLeft,
@@ -312,8 +312,8 @@ function LoginAurora() {
                 right: 0,
                 height: 3,
                 background:
-                  "linear-gradient(90deg, transparent, #4F46E5, #A78BFA, transparent)",
-                boxShadow: "0 0 22px 4px rgba(79,70,229,.55)",
+                  "linear-gradient(90deg, transparent, #059669, #6EE7B7, transparent)",
+                boxShadow: "0 0 22px 4px rgba(5,150,105,.55)",
               }}
             />
 
@@ -356,8 +356,8 @@ function LoginAurora() {
                     style={{
                       width: 18,
                       height: 18,
-                      background: "#EEF2FF",
-                      color: "#4F46E5",
+                      background: "#ECFDF5",
+                      color: "#059669",
                       fontSize: 11,
                     }}
                   >
@@ -387,8 +387,8 @@ function LoginAurora() {
         <div className="relative z-10 grid grid-cols-3 gap-3.5">
           {[
             {
-              c: "#EEF2FF",
-              a: "#4F46E5",
+              c: "#ECFDF5",
+              a: "#059669",
               t: "OCR แม่นยำ",
               s: "อ่านนามบัตรไทย-อังกฤษ",
               Icon: Zap,
@@ -449,7 +449,7 @@ function LoginAurora() {
         <div className="lg:hidden flex items-center gap-3 mb-6">
           <div
             className="w-9 h-9 rounded-[10px] flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #4F46E5, #7C3AED)" }}
+            style={{ background: "linear-gradient(135deg, #059669, #10B981)" }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
               <rect
@@ -533,7 +533,7 @@ function LoginAurora() {
                 <span>รหัสผ่าน</span>
                 <a
                   href="mailto:maliwan.th@nslfoods.com?cc=jariya.mu@nslfoods.com&subject=ลืมรหัสผ่าน SmartCard"
-                  className="text-indigo-600 font-semibold hover:underline"
+                  className="text-emerald-600 font-semibold hover:underline"
                 >
                   ลืมรหัสผ่าน?
                 </a>
@@ -581,8 +581,8 @@ function LoginAurora() {
                 height: 50,
                 borderRadius: 12,
                 fontSize: 15,
-                background: "linear-gradient(135deg, #4F46E5, #7C3AED)",
-                boxShadow: "0 12px 28px -10px rgba(79,70,229,.55)",
+                background: "linear-gradient(135deg, #059669, #10B981)",
+                boxShadow: "0 12px 28px -10px rgba(5,150,105,.55)",
               }}
             >
               {pending ? (
@@ -603,7 +603,7 @@ function LoginAurora() {
               ยังไม่มีบัญชีหรือมีปัญหา?{" "}
               <a
                 href="mailto:maliwan.th@nslfoods.com?cc=jariya.mu@nslfoods.com&subject=ขอเข้าใช้ SmartCard"
-                className="text-indigo-600 font-semibold hover:underline"
+                className="text-emerald-600 font-semibold hover:underline"
               >
                 ติดต่อผู้ดูแลระบบ
               </a>
@@ -628,8 +628,8 @@ function LoginAurora() {
       {/* Aurora-specific input focus styles */}
       <style>{`
         .aurora-input:focus {
-          border-color: #4F46E5 !important;
-          box-shadow: 0 0 0 4px rgba(79, 70, 229, .12) !important;
+          border-color: #059669 !important;
+          box-shadow: 0 0 0 4px rgba(5, 150, 105, .12) !important;
         }
       `}</style>
     </div>

@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import type { EventField, EventRow } from "@/lib/supabase/types";
 import { EVENT_TEMPLATES, type EventTemplate } from "@/lib/event-templates";
+import { EventDeleteDialog } from "@/components/EventDeleteDialog";
 
 type FieldType = "text" | "textarea" | "multiselect";
 
@@ -83,6 +84,7 @@ function autoSlug(name: string): string {
 
 export default function AdminEventsPage() {
   const [events, setEvents] = useState<EventRow[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<EventRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<EventDraft | null>(null);
@@ -145,24 +147,8 @@ export default function AdminEventsPage() {
     setIsNew(false);
   };
 
-  const onDelete = async (ev: EventRow) => {
-    if (
-      !confirm(
-        `ลบ event "${ev.name}" ใช่ไหม?\nข้อมูลนามบัตรที่ผูก event นี้ยังเก็บไว้`
-      )
-    )
-      return;
-    try {
-      const res = await fetch(`/api/events/${ev.id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || `HTTP ${res.status}`);
-      }
-      await load();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
-    }
-  };
+  // Open the rich delete dialog (handles count preview + archive/move/delete).
+  const onDelete = (ev: EventRow) => setDeleteTarget(ev);
 
   return (
     <div className="container mx-auto max-w-5xl px-4 py-6 space-y-4">
@@ -258,7 +244,7 @@ export default function AdminEventsPage() {
                   size="icon"
                   className="text-destructive hover:text-destructive"
                   onClick={() => onDelete(ev)}
-                  title="Archive"
+                  title="ลบ event"
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -288,6 +274,19 @@ export default function AdminEventsPage() {
           }}
         />
       )}
+
+      <EventDeleteDialog
+        event={deleteTarget}
+        otherEvents={events}
+        open={deleteTarget !== null}
+        onOpenChange={(v) => {
+          if (!v) setDeleteTarget(null);
+        }}
+        onDone={() => {
+          setDeleteTarget(null);
+          load();
+        }}
+      />
     </div>
   );
 }

@@ -25,6 +25,7 @@ import {
   Calendar,
   Copy,
   Sparkles,
+  ContactRound,
 } from "lucide-react";
 import type { EventField, EventRow } from "@/lib/supabase/types";
 import { EVENT_TEMPLATES, type EventTemplate } from "@/lib/event-templates";
@@ -95,7 +96,7 @@ export default function AdminEventsPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/events?all=1", { cache: "no-store" });
+      const res = await fetch("/api/events?all=1&counts=1", { cache: "no-store" });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || `HTTP ${res.status}`);
@@ -219,6 +220,25 @@ export default function AdminEventsPage() {
                     </span>
                   )}
                   <span>{(ev.fields ?? []).length} fields</span>
+                  {(() => {
+                    const n =
+                      (ev as EventRow & { attendance_count?: number })
+                        .attendance_count;
+                    if (n === undefined) return null;
+                    return (
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${
+                          n > 0
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                        title="จำนวนนามบัตรใน event นี้"
+                      >
+                        <ContactRound className="h-3 w-3" />
+                        {n.toLocaleString()} นามบัตร
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
               <Button

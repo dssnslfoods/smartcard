@@ -15,6 +15,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const includeArchived = url.searchParams.get("all") === "1";
+  const withCounts = url.searchParams.get("counts") === "1";
 
   const supabase = await createClient();
   let query = supabase
@@ -31,7 +32,32 @@ export async function GET(req: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ events: data ?? [] });
+
+  const events = data ?? [];
+
+  if (!withCounts || events.length === 0) {
+    return NextResponse.json({ events });
+  }
+
+  // One round-trip to count attendances per event (only event_id is selected,
+  // so the payload stays small). RLS scopes to the caller's company.
+  const { data: attRows } = await supabase
+    .from("attendances")
+    .select("event_id")
+    .is("deleted_at", null)
+    .not("event_id", "is", null);
+
+  const counts: Record<string, number> = {};
+  for (const r of attRows ?? []) {
+    if (r.event_id) counts[r.event_id] = (counts[r.event_id] ?? 0) + 1;
+  }
+
+  const enriched = events.map((e) => ({
+    ...e,
+    attendance_count: counts[e.id] ?? 0,
+  }));
+
+  return NextResponse.json({ events: enriched });
 }
 
 export async function POST(req: NextRequest) {

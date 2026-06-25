@@ -190,20 +190,12 @@ export default function AdminEventsPage() {
         </Card>
       ) : (
         events.map((ev) => (
-          <Card
-            key={ev.id}
-            className={`card-hover shadow-soft ${ev.archived_at ? "opacity-60" : ""}`}
-          >
+          <Card key={ev.id} className="card-hover shadow-soft">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold truncate">{ev.name}</span>
-                  {ev.archived_at && (
-                    <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded">
-                      archived
-                    </span>
-                  )}
-                  {!ev.active && !ev.archived_at && (
+                  {!ev.active && (
                     <span className="text-xs bg-muted px-2 py-0.5 rounded">
                       inactive
                     </span>
@@ -258,8 +250,7 @@ export default function AdminEventsPage() {
               >
                 <Copy className="h-4 w-4" />
               </Button>
-              {!ev.archived_at && (
-                <Button
+              <Button
                   variant="ghost"
                   size="icon"
                   className="text-destructive hover:text-destructive"
@@ -268,7 +259,6 @@ export default function AdminEventsPage() {
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-              )}
             </CardContent>
           </Card>
         ))
@@ -322,7 +312,7 @@ function TemplatePicker({
   onDuplicate: (ev: EventRow) => void;
   onClose: () => void;
 }) {
-  const usable = existingEvents.filter((e) => !e.archived_at);
+  const usable = existingEvents;
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center bg-black/50 p-0 sm:p-4">

@@ -62,11 +62,13 @@ export async function PATCH(
   return NextResponse.json({ event: data });
 }
 
-// DELETE — supports three modes via query string:
-//   ?mode=archive           (default) soft archive, keep attendances as-is
+// DELETE — supports two modes via query string:
 //   ?mode=move&to=<eid>     move all attendances to another event, then hard-delete event
-//   ?mode=delete_cards      hard delete all attendances (cleanup orphan contacts +
+//   ?mode=delete_cards      hard-delete all attendances (cleanup orphan contacts +
 //                           Storage images), then hard-delete event
+//
+// Note: the legacy soft-archive mode was removed — events are now always
+// hard-deleted, and the caller must decide what happens to the attendances.
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -74,18 +76,8 @@ export async function DELETE(
   const { id } = await params;
   const supabase = await createClient();
   const url = new URL(req.url);
-  const mode = url.searchParams.get("mode") || "archive";
+  const mode = url.searchParams.get("mode") || "delete_cards";
   const moveTo = url.searchParams.get("to");
-
-  if (mode === "archive") {
-    const { error } = await supabase
-      .from("events")
-      .update({ archived_at: new Date().toISOString(), active: false })
-      .eq("id", id);
-    if (error)
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    return NextResponse.json({ ok: true, mode: "archive" });
-  }
 
   if (mode === "move") {
     if (!moveTo) {

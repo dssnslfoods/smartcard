@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
-  Archive,
   ArrowRightLeft,
   Loader2,
   Trash2,
@@ -28,10 +27,9 @@ export type EventLite = {
   id: string;
   name: string;
   slug: string;
-  archived_at: string | null;
 };
 
-type Mode = "archive" | "move" | "delete_cards";
+type Mode = "move" | "delete_cards";
 
 export function EventDeleteDialog({
   event,
@@ -48,23 +46,21 @@ export function EventDeleteDialog({
 }) {
   const [count, setCount] = useState<number | null>(null);
   const [loadingCount, setLoadingCount] = useState(false);
-  const [mode, setMode] = useState<Mode>("archive");
+  const [mode, setMode] = useState<Mode>("delete_cards");
   const [moveTo, setMoveTo] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Available target events (must be not-archived, not this one)
+  // Available target events (excluding this one)
   const targets = useMemo(
-    () =>
-      otherEvents.filter(
-        (e) => e.id !== event?.id && !e.archived_at
-      ),
+    () => otherEvents.filter((e) => e.id !== event?.id),
     [otherEvents, event]
   );
 
   useEffect(() => {
     if (!open || !event) return;
-    setMode("archive");
+    // Default: move (if there are other events to move into); otherwise hard-delete.
+    setMode(targets.length > 0 ? "move" : "delete_cards");
     setMoveTo(targets[0]?.id ?? "");
     setError(null);
     setCount(null);
@@ -161,16 +157,7 @@ export function EventDeleteDialog({
 
         {/* Mode picker */}
         <div className="space-y-2.5 mt-1">
-          <OptionRow
-            active={mode === "archive"}
-            onClick={() => setMode("archive")}
-            icon={Archive}
-            color="text-slate-600"
-            title="เก็บเข้าคลัง (Archive)"
-            desc="ปลอดภัยสุด — event ถูกซ่อน แต่นามบัตรทั้งหมดยังอยู่ในระบบ"
-          />
-
-          {hasCards && targets.length > 0 && (
+          {targets.length > 0 && (
             <OptionRow
               active={mode === "move"}
               onClick={() => setMode("move")}
@@ -235,18 +222,12 @@ export function EventDeleteDialog({
           >
             {submitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : mode === "delete_cards" ? (
-              <Trash2 className="h-4 w-4" />
             ) : mode === "move" ? (
               <ArrowRightLeft className="h-4 w-4" />
             ) : (
-              <Archive className="h-4 w-4" />
+              <Trash2 className="h-4 w-4" />
             )}
-            {mode === "archive"
-              ? "เก็บเข้าคลัง"
-              : mode === "move"
-              ? "ย้ายและลบ"
-              : "ลบทั้งหมด"}
+            {mode === "move" ? "ย้ายและลบ" : "ลบทั้งหมด"}
           </Button>
         </div>
       </DialogContent>
